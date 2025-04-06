@@ -98,6 +98,7 @@ const Settings: React.FC = () => {
           <TabsTrigger value="users">المستخدمين</TabsTrigger>
           <TabsTrigger value="backup">النسخ الاحتياطي</TabsTrigger>
           <TabsTrigger value="import">استيراد البيانات</TabsTrigger>
+          <TabsTrigger value="export">تصدير البيانات</TabsTrigger>
         </TabsList>
         
         <TabsContent value="company">
@@ -235,6 +236,65 @@ const Settings: React.FC = () => {
                   <Icon name="import" className="ml-2" />
                   الانتقال لصفحة استيراد البيانات
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="export">
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold mb-4">تصدير البيانات</h2>
+              <p className="text-gray-500">يمكنك تصدير كافة البيانات إلى ملف Excel من خلال هذه الصفحة.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-3">تصدير جميع البيانات</h3>
+                  <p className="text-gray-500 mb-4">تصدير جميع البيانات الموجودة في النظام إلى ملف Excel واحد.</p>
+                  <Button className="w-full" onClick={() => window.open('/api/export/excel?type=all', '_blank')}>
+                    <Icon name="download" className="ml-2" />
+                    تصدير جميع البيانات
+                  </Button>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-medium mb-3">تصدير بيانات محددة</h3>
+                  <p className="text-gray-500 mb-4">يمكنك تصدير فقط البيانات التي تريدها من خلال الخيارات التالية.</p>
+                  <div className="space-y-3">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => window.open('/api/export/excel?type=clients', '_blank')}
+                    >
+                      <Icon name="users" className="ml-2" />
+                      تصدير بيانات العملاء
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => window.open('/api/export/excel?type=products', '_blank')}
+                    >
+                      <Icon name="package" className="ml-2" />
+                      تصدير بيانات المنتجات
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => window.open('/api/export/excel?type=invoices', '_blank')}
+                    >
+                      <Icon name="file-text" className="ml-2" />
+                      تصدير بيانات الفواتير
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => window.open('/api/export/excel?type=transactions', '_blank')}
+                    >
+                      <Icon name="repeat" className="ml-2" />
+                      تصدير بيانات المعاملات المالية
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

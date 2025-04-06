@@ -600,9 +600,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/backup/create", createBackup);
   app.post("/api/backup/restore", restoreBackup);
   
-  // Excel import and export routes
-  app.post("/api/import/excel", importExcelData);
+  // Excel export and import routes
   app.get("/api/export/excel", exportExcelData);
+  app.post("/api/import/excel", importExcelData);
   
   // Batch Operations routes
   // Clients batch operations
