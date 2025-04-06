@@ -12,6 +12,7 @@ import {
   insertTransactionSchema,
   insertSettingsSchema
 } from "@shared/schema";
+import { createBackup, restoreBackup } from "./backup";
 
 // Helper function to handle validation
 function validate<T extends z.ZodType>(
@@ -591,6 +592,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     return res.json(updatedSettings);
   });
+
+  // Backup and Restore routes
+  app.get("/api/backup/create", createBackup);
+  app.post("/api/backup/restore", restoreBackup);
 
   const httpServer = createServer(app);
   return httpServer;
