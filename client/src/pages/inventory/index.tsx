@@ -42,7 +42,7 @@ const Inventory: React.FC = () => {
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filterCategory, setFilterCategory] = useState<string>("");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const [showLowStock, setShowLowStock] = useState<boolean>(false);
   
   // New product dialog state
@@ -221,7 +221,7 @@ const Inventory: React.FC = () => {
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.code.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesCategory = filterCategory === "" || product.category === filterCategory;
+      const matchesCategory = filterCategory === "all" || product.category === filterCategory;
       
       const matchesLowStock = !showLowStock || 
         (product.reorderLevel && parseFloat(product.stockQuantity) <= parseFloat(product.reorderLevel));
@@ -442,7 +442,7 @@ const Inventory: React.FC = () => {
                   <SelectValue placeholder="الكل" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">الكل</SelectItem>
+                  <SelectItem value="all">الكل</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
@@ -638,7 +638,7 @@ const Inventory: React.FC = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">بدون فئة</SelectItem>
+                          <SelectItem value="none">بدون فئة</SelectItem>
                           {categories.map((category) => (
                             <SelectItem key={category} value={category}>
                               {category}
@@ -874,7 +874,7 @@ const Inventory: React.FC = () => {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">بدون فئة</SelectItem>
+                                <SelectItem value="none">بدون فئة</SelectItem>
                                 {categories.map((category) => (
                                   <SelectItem key={category} value={category}>
                                     {category}

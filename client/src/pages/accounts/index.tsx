@@ -320,7 +320,7 @@ const Accounts: React.FC = () => {
                       <SelectValue placeholder="الكل" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">الكل</SelectItem>
+                      <SelectItem value="all">الكل</SelectItem>
                       <SelectItem value="عميل">عميل</SelectItem>
                       <SelectItem value="مورد">مورد</SelectItem>
                       <SelectItem value="موظف">موظف</SelectItem>
@@ -336,7 +336,7 @@ const Accounts: React.FC = () => {
                       <SelectValue placeholder="الكل" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">الكل</SelectItem>
+                      <SelectItem value="all">الكل</SelectItem>
                       <SelectItem value="مدين">مدين</SelectItem>
                       <SelectItem value="دائن">دائن</SelectItem>
                     </SelectContent>

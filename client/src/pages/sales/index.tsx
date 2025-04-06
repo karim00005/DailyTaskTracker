@@ -317,7 +317,7 @@ const Sales: React.FC = () => {
                       <SelectValue placeholder="-- اختر --" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- اختر --</SelectItem>
+                      <SelectItem value="all">-- اختر --</SelectItem>
                       {warehouses?.map((warehouse: any) => (
                         <SelectItem key={warehouse.id} value={warehouse.id.toString()}>
                           {warehouse.name}
@@ -386,7 +386,7 @@ const Sales: React.FC = () => {
                       <SelectValue placeholder="-- اختر --" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- اختر --</SelectItem>
+                      <SelectItem value="all">-- اختر --</SelectItem>
                       <SelectItem value="عميل">عميل</SelectItem>
                       <SelectItem value="مورد">مورد</SelectItem>
                       <SelectItem value="موظف">موظف</SelectItem>
@@ -401,7 +401,7 @@ const Sales: React.FC = () => {
                       <SelectValue placeholder="-- اختر --" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- اختر --</SelectItem>
+                      <SelectItem value="all">-- اختر --</SelectItem>
                       {users?.map((user: any) => (
                         <SelectItem key={user.id} value={user.id.toString()}>
                           {user.fullName}
@@ -452,7 +452,7 @@ const Sales: React.FC = () => {
                       <SelectValue placeholder="-- اختر --" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- اختر --</SelectItem>
+                      <SelectItem value="all">-- اختر --</SelectItem>
                       {users?.map((user: any) => (
                         <SelectItem key={user.id} value={user.id.toString()}>
                           {user.fullName}
@@ -466,11 +466,11 @@ const Sales: React.FC = () => {
 
             {/* Search Buttons */}
             <div className="flex justify-end space-x-2 space-x-reverse mt-4">
-              <Button variant="warning" onClick={handleSearch}>
+              <Button variant="outline" className="bg-yellow-100 hover:bg-yellow-200 text-yellow-900" onClick={handleSearch}>
                 <Icon name="search" className="ml-1" size={16} />
                 عرض الأصناف
               </Button>
-              <Button variant="primary" onClick={handleSearch}>
+              <Button variant="default" className="bg-primary text-white hover:bg-primary/90" onClick={handleSearch}>
                 <Icon name="search" className="ml-1" size={16} />
                 عرض الفواتير
               </Button>
