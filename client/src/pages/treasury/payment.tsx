@@ -31,7 +31,7 @@ const Payment: React.FC = () => {
   const [bank, setBank] = useState<string>("بنك مصر");
   const [reference, setReference] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
-  const [category, setCategory] = useState<string>("");
+  const [category, setCategory] = useState<string>("uncategorized");
   const [printAfterSave, setPrintAfterSave] = useState<boolean>(false);
   
   // Load data
@@ -90,7 +90,7 @@ const Payment: React.FC = () => {
       setAmount("0");
       setReference("");
       setNotes("");
-      setCategory("");
+      setCategory("uncategorized");
       
       // Set new transaction number
       if (transactions) {
@@ -250,7 +250,7 @@ const Payment: React.FC = () => {
                       <SelectValue placeholder="اختر بند المصروف" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">بدون تصنيف</SelectItem>
+                      <SelectItem value="uncategorized">بدون تصنيف</SelectItem>
                       <SelectItem value="إيجارات">إيجارات</SelectItem>
                       <SelectItem value="رواتب">رواتب</SelectItem>
                       <SelectItem value="صيانة">صيانة</SelectItem>
