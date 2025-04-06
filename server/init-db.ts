@@ -2,15 +2,23 @@ import { db } from './db';
 import { 
   users, clients, products, warehouses, settings
 } from '@shared/schema';
+import { eq, sql } from 'drizzle-orm'; // Importing eq function and sql
 
-const checkClientsSchema = async () => {
+const checkAndFixClientsSchema = async () => {
   try {
+    // Try to query the balance column
     await db.select().from(clients).where(eq(clients.balance, 0));
     console.log("The 'balance' column exists in the clients table.");
     return true;
   } catch (error) {
-    console.log("The 'balance' column does NOT exist in the clients table.");
-    return false;
+    console.log("The 'balance' column does NOT exist in the clients table. Adding it...");
+    
+    // Add the column if it doesn't exist
+    await db.run(`
+      ALTER TABLE clients ADD COLUMN balance REAL DEFAULT 0;
+    `);
+    
+    return true;
   }
 };
 
@@ -18,11 +26,8 @@ export const initializeDatabase = async () => {
   console.log("Initializing database with default data...");
   
   try {
-    // Check the clients table schema
-    const hasBalance = await checkClientsSchema();
-    if (!hasBalance) {
-      throw new Error("Database schema is not properly initialized");
-    }
+    // Check and fix the clients table schema
+    await checkAndFixClientsSchema();
     
     // Check if we have any users
     const existingUsers = await db.select().from(users);
@@ -118,4 +123,4 @@ export const initializeDatabase = async () => {
     console.error("Error initializing database:", error);
     throw error;
   }
-}
+}; // Closing brace added here
