@@ -279,7 +279,12 @@ export class MemStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const newUser: User = { ...user, id };
+    const newUser: User = { 
+      ...user, 
+      id,
+      role: user.role || "user",
+      isActive: user.isActive !== undefined ? user.isActive : true
+    };
     this.users.set(id, newUser);
     return newUser;
   }
@@ -314,7 +319,20 @@ export class MemStorage implements IStorage {
 
   async createClient(client: InsertClient): Promise<Client> {
     const id = this.currentClientId++;
-    const newClient: Client = { ...client, id };
+    const newClient: Client = { 
+      ...client, 
+      id,
+      isActive: client.isActive !== undefined ? client.isActive : true,
+      code: client.code !== undefined ? client.code : null,
+      taxId: client.taxId !== undefined ? client.taxId : null,
+      balance: client.balance || "0",
+      address: client.address !== undefined ? client.address : null,
+      city: client.city !== undefined ? client.city : null,
+      phone: client.phone !== undefined ? client.phone : null,
+      mobile: client.mobile !== undefined ? client.mobile : null,
+      email: client.email !== undefined ? client.email : null,
+      notes: client.notes !== undefined ? client.notes : null
+    };
     this.clients.set(id, newClient);
     return newClient;
   }
@@ -349,7 +367,17 @@ export class MemStorage implements IStorage {
 
   async createProduct(product: InsertProduct): Promise<Product> {
     const id = this.currentProductId++;
-    const newProduct: Product = { ...product, id };
+    const newProduct: Product = { 
+      ...product, 
+      id,
+      isActive: product.isActive !== undefined ? product.isActive : true,
+      description: product.description !== undefined ? product.description : null,
+      category: product.category !== undefined ? product.category : null,
+      sellPrice2: product.sellPrice2 !== undefined ? product.sellPrice2 : null,
+      sellPrice3: product.sellPrice3 !== undefined ? product.sellPrice3 : null,
+      stockQuantity: product.stockQuantity || "0",
+      reorderLevel: product.reorderLevel !== undefined ? product.reorderLevel : null
+    };
     this.products.set(id, newProduct);
     return newProduct;
   }
@@ -400,11 +428,19 @@ export class MemStorage implements IStorage {
 
   async createWarehouse(warehouse: InsertWarehouse): Promise<Warehouse> {
     const id = this.currentWarehouseId++;
-    const newWarehouse: Warehouse = { ...warehouse, id };
+    const newWarehouse: Warehouse = { 
+      ...warehouse, 
+      id,
+      isActive: warehouse.isActive !== undefined ? warehouse.isActive : true,
+      address: warehouse.address !== undefined ? warehouse.address : null,
+      isDefault: warehouse.isDefault !== undefined ? warehouse.isDefault : false
+    };
     
     // If this is the first warehouse or set as default, make sure only one is default
     if (newWarehouse.isDefault) {
-      for (const [wId, w] of this.warehouses.entries()) {
+      // Use Array.from to avoid the iterator issue
+      const warehouseEntries = Array.from(this.warehouses.entries());
+      for (const [wId, w] of warehouseEntries) {
         if (w.isDefault) {
           this.warehouses.set(wId, { ...w, isDefault: false });
         }
@@ -423,7 +459,9 @@ export class MemStorage implements IStorage {
     
     // If updated to be default, update other warehouses
     if (warehouseData.isDefault) {
-      for (const [wId, w] of this.warehouses.entries()) {
+      // Use Array.from to avoid the iterator issue
+      const warehouseEntries = Array.from(this.warehouses.entries());
+      for (const [wId, w] of warehouseEntries) {
         if (wId !== id && w.isDefault) {
           this.warehouses.set(wId, { ...w, isDefault: false });
         }
@@ -466,7 +504,14 @@ export class MemStorage implements IStorage {
     const newInvoice: Invoice = { 
       ...invoice, 
       id,
-      createdAt: now
+      createdAt: now,
+      notes: invoice.notes !== undefined ? invoice.notes : null,
+      warehouseId: invoice.warehouseId !== undefined ? invoice.warehouseId : null,
+      discount: invoice.discount || "0",
+      tax: invoice.tax || "0",
+      total: invoice.total || "0",
+      balance: invoice.balance || "0",
+      paid: invoice.paid || "0"
     };
     
     this.invoices.set(id, newInvoice);
@@ -513,7 +558,12 @@ export class MemStorage implements IStorage {
 
   async createInvoiceItem(invoiceItem: InsertInvoiceItem): Promise<InvoiceItem> {
     const id = this.currentInvoiceItemId++;
-    const newInvoiceItem: InvoiceItem = { ...invoiceItem, id };
+    const newInvoiceItem: InvoiceItem = { 
+      ...invoiceItem, 
+      id,
+      discount: invoiceItem.discount || "0",
+      tax: invoiceItem.tax || "0"
+    };
     
     this.invoiceItems.set(id, newInvoiceItem);
     
@@ -615,7 +665,10 @@ export class MemStorage implements IStorage {
     const newTransaction: Transaction = { 
       ...transaction, 
       id,
-      createdAt: now
+      createdAt: now,
+      notes: transaction.notes !== undefined ? transaction.notes : null,
+      reference: transaction.reference !== undefined ? transaction.reference : null,
+      bank: transaction.bank !== undefined ? transaction.bank : null
     };
     
     this.transactions.set(id, newTransaction);
@@ -735,4 +788,11 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Import the DatabaseStorage class
+import { DatabaseStorage } from './database-storage';
+
+// Uncomment to use the DatabaseStorage
+export const storage = new DatabaseStorage();
+
+// Memory storage for backup or development purposes
+// export const storage = new MemStorage();

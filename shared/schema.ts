@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, date, time, decimal, timestamp } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -225,6 +226,63 @@ export const insertSettingsSchema = createInsertSchema(settings).pick({
   backupPath: true,
   cloudBackupPath: true,
 });
+
+// Define relations between tables
+export const usersRelations = relations(users, ({ many }) => ({
+  invoices: many(invoices),
+  transactions: many(transactions),
+}));
+
+export const clientsRelations = relations(clients, ({ many }) => ({
+  invoices: many(invoices),
+  transactions: many(transactions),
+}));
+
+export const productsRelations = relations(products, ({ many }) => ({
+  invoiceItems: many(invoiceItems),
+}));
+
+export const warehousesRelations = relations(warehouses, ({ many }) => ({
+  invoices: many(invoices),
+}));
+
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+  client: one(clients, {
+    fields: [invoices.clientId],
+    references: [clients.id],
+  }),
+  warehouse: one(warehouses, {
+    fields: [invoices.warehouseId],
+    references: [warehouses.id],
+  }),
+  user: one(users, {
+    fields: [invoices.userId],
+    references: [users.id],
+  }),
+  items: many(invoiceItems),
+}));
+
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+  invoice: one(invoices, {
+    fields: [invoiceItems.invoiceId],
+    references: [invoices.id],
+  }),
+  product: one(products, {
+    fields: [invoiceItems.productId],
+    references: [products.id],
+  }),
+}));
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  client: one(clients, {
+    fields: [transactions.clientId],
+    references: [clients.id],
+  }),
+  user: one(users, {
+    fields: [transactions.userId],
+    references: [users.id],
+  }),
+}));
 
 // Type exports
 export type User = typeof users.$inferSelect;
