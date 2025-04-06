@@ -97,6 +97,7 @@ const Settings: React.FC = () => {
           <TabsTrigger value="system">إعدادات النظام</TabsTrigger>
           <TabsTrigger value="users">المستخدمين</TabsTrigger>
           <TabsTrigger value="backup">النسخ الاحتياطي</TabsTrigger>
+          <TabsTrigger value="import">استيراد البيانات</TabsTrigger>
         </TabsList>
         
         <TabsContent value="company">
@@ -217,6 +218,22 @@ const Settings: React.FC = () => {
                 <Button onClick={() => window.location.href = "/settings/backup"}>
                   <Icon name="backup" className="ml-2" />
                   الانتقال لصفحة النسخ الاحتياطي
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="import">
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold mb-4">استيراد البيانات</h2>
+              <p className="text-gray-500">يمكنك استيراد البيانات من ملفات Excel من خلال هذه الصفحة.</p>
+              
+              <div className="flex justify-center mt-6">
+                <Button onClick={() => window.location.href = "/settings/import"}>
+                  <Icon name="import" className="ml-2" />
+                  الانتقال لصفحة استيراد البيانات
                 </Button>
               </div>
             </CardContent>

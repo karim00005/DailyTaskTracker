@@ -13,6 +13,7 @@ import {
   insertSettingsSchema
 } from "@shared/schema";
 import { createBackup, restoreBackup } from "./backup";
+import { importExcelData } from "./import";
 
 // Helper function to handle validation
 function validate<T extends z.ZodType>(
@@ -596,6 +597,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Backup and Restore routes
   app.get("/api/backup/create", createBackup);
   app.post("/api/backup/restore", restoreBackup);
+  
+  // Excel import route
+  app.post("/api/import/excel", importExcelData);
 
   const httpServer = createServer(app);
   return httpServer;

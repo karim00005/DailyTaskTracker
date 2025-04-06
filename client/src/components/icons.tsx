@@ -72,7 +72,8 @@ export type IconName =
   | 'database'
   | 'home'
   | 'loading'
-  | 'download';
+  | 'download'
+  | 'import';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;
@@ -115,7 +116,8 @@ export const Icon: React.FC<IconProps> = ({ name, size = 24, ...rest }) => {
     database: <Database size={size} />,
     home: <Home size={size} />,
     loading: <Loader size={size} />,
-    download: <Download size={size} />
+    download: <Download size={size} />,
+    import: <Upload size={size} />
   };
 
   return (

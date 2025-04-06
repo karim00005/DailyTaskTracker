@@ -15,6 +15,7 @@ import Receipt from "@/pages/treasury/receipt";
 import Payment from "@/pages/treasury/payment";
 import Settings from "@/pages/settings";
 import Backup from "./pages/settings/backup";
+import Import from "./pages/settings/import";
 import { useEffect } from "react";
 import { useAppContext, AppProvider } from "./context/AppContext";
 
@@ -53,6 +54,7 @@ function Router() {
         <Route path="/treasury/payment" component={Payment} />
         <Route path="/settings" component={Settings} />
         <Route path="/settings/backup" component={Backup} />
+        <Route path="/settings/import" component={Import} />
         <Route component={NotFound} />
       </Switch>
     </MainLayout>
