@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -7,560 +8,234 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Spinner } from "@/components/ui/spinner";
-
-interface Field {
-  id: string;
-  label: string;
-}
+} from '@/components/ui/card';
+import { useLocation } from 'wouter';
+import Spinner from '@/components/ui/spinner';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { apiRequest } from '@/lib/queryClient';
 
 interface BatchOperationsProps {
   title: string;
   description: string;
-  entity: string;
+  entityName: string;
+  entity?: string; // Added for compatibility with existing calls
+  operation: 'create' | 'update' | 'delete' | 'recode';
+  endpoint: string;
+  backUrl: string;
   templateColumns: Record<string, string>;
-  existingData: any[];
-  fields: Field[];
-  onBatchCreate: (data: any[]) => Promise<void>;
-  onBatchUpdate: (data: any[]) => Promise<void>;
-  onBatchDelete: (ids: number[]) => Promise<void>;
-  onBatchRecode: (fieldId: string, newValue: string, ids: number[]) => Promise<void>;
+  requiredColumns?: string[];
+  initialData?: any[];
+  existingData?: any; // Added for compatibility with existing calls
+  fields?: { id: string; label: string; }[]; // Added for compatibility with existing calls
+  onBatchCreate?: (data: any[]) => Promise<void>; // Added for compatibility with existing calls
+  onBatchUpdate?: (data: any[]) => Promise<void>; // Added for compatibility with existing calls
+  onBatchDelete?: (ids: number[]) => Promise<void>; // Added for compatibility with existing calls
+  onBatchRecode?: (data: any[]) => Promise<void>; // Added for compatibility with existing calls
 }
 
-interface BatchItem {
-  id?: number;
-  [key: string]: any;
-}
-
-function BatchOperations({
+const BatchOperations: React.FC<BatchOperationsProps> = ({
   title,
   description,
-  entity,
+  entityName,
+  operation,
+  endpoint,
+  backUrl,
   templateColumns,
-  existingData = [],
-  fields,
-  onBatchCreate,
-  onBatchUpdate,
-  onBatchDelete,
-  onBatchRecode
-}: BatchOperationsProps) {
+  requiredColumns = [],
+  initialData = [],
+}) => {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [selectedTab, setSelectedTab] = useState("create");
-  const [batchData, setBatchData] = useState<string>("");
-  const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [selectedField, setSelectedField] = useState<string>("");
-  const [newValue, setNewValue] = useState<string>("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [filterTerm, setFilterTerm] = useState("");
-  
-  const handleDataChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setBatchData(e.target.value);
-    
-    try {
-      // Try to parse as JSON
-      if (e.target.value.trim().startsWith('[')) {
-        const parsed = JSON.parse(e.target.value);
-        if (Array.isArray(parsed)) {
-          setBatchItems(parsed);
-          return;
+  const [isBusy, setIsBusy] = useState(false);
+  const [data, setData] = useState<any[]>(initialData.length > 0 ? initialData : [{}]);
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
+
+  const addRow = () => {
+    setData([...data, {}]);
+  };
+
+  const removeRow = (index: number) => {
+    const newData = [...data];
+    newData.splice(index, 1);
+    setData(newData.length > 0 ? newData : [{}]);
+  };
+
+  const handleColumnChange = (rowIndex: number, columnKey: string, value: string) => {
+    const newData = [...data];
+    newData[rowIndex] = {
+      ...newData[rowIndex],
+      [columnKey]: value,
+    };
+    setData(newData);
+
+    // Clear error for this field if it exists
+    if (errors[`${rowIndex}-${columnKey}`]) {
+      const newErrors = { ...errors };
+      delete newErrors[`${rowIndex}-${columnKey}`];
+      setErrors(newErrors);
+    }
+  };
+
+  const validateData = () => {
+    const newErrors: Record<string, string[]> = {};
+    let isValid = true;
+
+    data.forEach((row, rowIndex) => {
+      requiredColumns.forEach(columnKey => {
+        if (!row[columnKey]) {
+          const key = `${rowIndex}-${columnKey}`;
+          newErrors[key] = [`${templateColumns[columnKey]} مطلوب`];
+          isValid = false;
         }
-      }
-      
-      // Try to parse as CSV
-      const lines = e.target.value.trim().split('\n');
-      if (lines.length > 0) {
-        const headers = lines[0].split(',').map(h => h.trim());
-        const items = lines.slice(1).map(line => {
-          const values = line.split(',').map(v => v.trim());
-          const item: BatchItem = {};
-          headers.forEach((header, index) => {
-            item[header] = values[index] || '';
-          });
-          return item;
-        });
-        setBatchItems(items);
-      } else {
-        setBatchItems([]);
-      }
-    } catch (error) {
-      console.error("Error parsing batch data:", error);
-      setBatchItems([]);
-    }
-  };
-  
-  const handleRowSelect = (id: number, checked: boolean) => {
-    if (checked) {
-      setSelectedIds(prev => [...prev, id]);
-    } else {
-      setSelectedIds(prev => prev.filter(itemId => itemId !== id));
-    }
-  };
-  
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(filteredData.map(item => item.id!));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-  
-  const handleCreate = async () => {
-    if (batchItems.length === 0) {
-      toast({
-        title: "خطأ",
-        description: "لا توجد بيانات للإنشاء",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
-    try {
-      await onBatchCreate(batchItems);
-      toast({
-        title: "تم إنشاء " + entity + " بنجاح",
-        description: "تم إنشاء " + batchItems.length + " من " + entity
-      });
-      setBatchData("");
-      setBatchItems([]);
-    } catch (error) {
-      console.error("Error in batch create:", error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء إنشاء " + entity,
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const handleUpdate = async () => {
-    if (batchItems.length === 0) {
-      toast({
-        title: "خطأ",
-        description: "لا توجد بيانات للتحديث",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
-    try {
-      await onBatchUpdate(batchItems);
-      toast({
-        title: "تم تحديث " + entity + " بنجاح",
-        description: "تم تحديث " + batchItems.length + " من " + entity
-      });
-      setBatchData("");
-      setBatchItems([]);
-    } catch (error) {
-      console.error("Error in batch update:", error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تحديث " + entity,
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const handleDelete = async () => {
-    if (selectedIds.length === 0) {
-      toast({
-        title: "خطأ",
-        description: "يرجى تحديد " + entity + " للحذف",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
-    try {
-      await onBatchDelete(selectedIds);
-      toast({
-        title: "تم حذف " + entity + " بنجاح",
-        description: "تم حذف " + selectedIds.length + " من " + entity
-      });
-      setSelectedIds([]);
-    } catch (error) {
-      console.error("Error in batch delete:", error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء حذف " + entity,
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const handleRecode = async () => {
-    if (selectedIds.length === 0) {
-      toast({
-        title: "خطأ",
-        description: "يرجى تحديد " + entity + " لتغيير البيانات",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!selectedField) {
-      toast({
-        title: "خطأ",
-        description: "يرجى تحديد الحقل",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
-    try {
-      await onBatchRecode(selectedField, newValue, selectedIds);
-      toast({
-        title: "تم تغيير البيانات بنجاح",
-        description: "تم تغيير قيمة " + fields.find(f => f.id === selectedField)?.label + " لـ " + selectedIds.length + " من " + entity
-      });
-      setSelectedIds([]);
-      setSelectedField("");
-      setNewValue("");
-    } catch (error) {
-      console.error("Error in batch recode:", error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تغيير البيانات",
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const generateTemplate = () => {
-    let template = '';
-    const headers = Object.keys(templateColumns).join(',');
-    template = headers + '\\n';
-    template += Object.values(templateColumns).join(',');
-    return template;
-  };
-  
-  const handleCopyTemplate = () => {
-    navigator.clipboard.writeText(generateTemplate()).then(() => {
-      toast({
-        title: "تم نسخ القالب",
-        description: "تم نسخ القالب إلى الحافظة"
       });
     });
+
+    setErrors(newErrors);
+    return isValid;
   };
-  
-  const filteredData = existingData.filter(item => {
-    if (!filterTerm) return true;
-    
-    return Object.entries(item).some(([key, value]) => {
-      if (typeof value === 'string') {
-        return value.toLowerCase().includes(filterTerm.toLowerCase());
-      }
-      if (typeof value === 'number') {
-        return value.toString().includes(filterTerm);
-      }
-      return false;
-    });
-  });
-  
+
+  const handleSubmit = async () => {
+    if (!validateData()) {
+      toast({
+        title: "خطأ في البيانات",
+        description: "يرجى ملء جميع الحقول المطلوبة",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      // Filter out empty objects
+      const filteredData = data.filter(row => Object.keys(row).length > 0);
+      const response = await apiRequest(endpoint, 'POST', filteredData);
+
+      toast({
+        title: "تمت العملية بنجاح",
+        description: `تم تنفيذ عملية الـ${operation} بنجاح`,
+      });
+
+      // Redirect back to main page
+      navigate(backUrl);
+    } catch (error) {
+      console.error('Batch operation error:', error);
+      toast({
+        title: "حدث خطأ",
+        description: "حدث خطأ أثناء معالجة البيانات",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const getOperationTitle = () => {
+    switch (operation) {
+      case 'create': return `إضافة ${entityName} متعددة`;
+      case 'update': return `تعديل ${entityName} متعددة`;
+      case 'delete': return `حذف ${entityName} متعددة`;
+      case 'recode': return `إعادة ترميز ${entityName}`;
+      default: return title;
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle>{getOperationTitle()}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="create" onValueChange={setSelectedTab} value={selectedTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-4">
-            <TabsTrigger value="create">إنشاء</TabsTrigger>
-            <TabsTrigger value="update">تحديث</TabsTrigger>
-            <TabsTrigger value="delete">حذف</TabsTrigger>
-            <TabsTrigger value="recode">تغيير قيم</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="create">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">إنشاء {entity} بشكل جماعي</h3>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleCopyTemplate}
-                >
-                  نسخ القالب
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                يمكنك إدخال البيانات بتنسيق CSV أو JSON. كل سطر يمثل عنصرًا جديدًا.
-              </p>
-              <Textarea 
-                placeholder={`أدخل البيانات هنا...\n${generateTemplate()}`}
-                className="min-h-[200px] font-mono"
-                value={batchData}
-                onChange={handleDataChange}
-              />
-              
-              {batchItems.length > 0 && (
-                <div className="rounded border overflow-auto max-h-[300px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        {Object.keys(batchItems[0]).map(key => (
-                          <TableHead key={key}>{key}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {batchItems.map((item, index) => (
-                        <TableRow key={index}>
-                          {Object.values(item).map((value, i) => (
-                            <TableCell key={i}>
-                              {value !== null && value !== undefined ? String(value) : ''}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="update">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">تحديث {entity} بشكل جماعي</h3>
-              <p className="text-sm text-muted-foreground">
-                يجب أن تحتوي البيانات على حقل 'id' لتحديد الصفوف المراد تحديثها.
-              </p>
-              <Textarea 
-                placeholder="أدخل البيانات هنا بتنسيق CSV أو JSON. يجب أن تحتوي على حقل 'id'"
-                className="min-h-[200px] font-mono"
-                value={batchData}
-                onChange={handleDataChange}
-              />
-              
-              {batchItems.length > 0 && (
-                <div className="rounded border overflow-auto max-h-[300px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        {Object.keys(batchItems[0]).map(key => (
-                          <TableHead key={key}>{key}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {batchItems.map((item, index) => (
-                        <TableRow key={index}>
-                          {Object.values(item).map((value, i) => (
-                            <TableCell key={i}>
-                              {value !== null && value !== undefined ? String(value) : ''}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="delete">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">حذف {entity} بشكل جماعي</h3>
-              <p className="text-sm text-muted-foreground">
-                حدد {entity} التي ترغب في حذفها من القائمة أدناه.
-              </p>
-              
-              <div className="flex gap-2 my-2">
-                <Input 
-                  placeholder="بحث..." 
-                  value={filterTerm}
-                  onChange={e => setFilterTerm(e.target.value)}
-                  className="max-w-[300px]"
-                />
-              </div>
-              
-              <div className="rounded border overflow-auto max-h-[400px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10">
-                        <Checkbox 
-                          checked={selectedIds.length > 0 && selectedIds.length === filteredData.length}
-                          onCheckedChange={handleSelectAll}
-                        />
-                      </TableHead>
-                      {existingData.length > 0 && Object.keys(existingData[0])
-                        .filter(key => ['id', 'name', 'code', 'invoiceNumber', 'date', 'total', 'balance'].includes(key))
-                        .map(key => (
-                          <TableHead key={key}>{key}</TableHead>
-                        ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredData.map((item, index) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <Checkbox 
-                            checked={selectedIds.includes(item.id)}
-                            onCheckedChange={(checked) => handleRowSelect(item.id, !!checked)}
-                          />
-                        </TableCell>
-                        {Object.keys(item)
-                          .filter(key => ['id', 'name', 'code', 'invoiceNumber', 'date', 'total', 'balance'].includes(key))
-                          .map(key => (
-                            <TableCell key={key}>
-                              {item[key] !== null && item[key] !== undefined ? String(item[key]) : ''}
-                            </TableCell>
-                          ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="text-sm">
-                  تم تحديد {selectedIds.length} من {existingData.length}
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="recode">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">تغيير قيم {entity} بشكل جماعي</h3>
-              <p className="text-sm text-muted-foreground">
-                حدد {entity} والحقل الذي ترغب في تغيير قيمته.
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">الحقل</label>
-                  <Select value={selectedField} onValueChange={setSelectedField}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر الحقل" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fields.map(field => (
-                        <SelectItem key={field.id} value={field.id}>{field.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium mb-1 block">القيمة الجديدة</label>
-                  <Input 
-                    placeholder="ادخل القيمة الجديدة"
-                    value={newValue}
-                    onChange={e => setNewValue(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex gap-2 my-2">
-                <Input 
-                  placeholder="بحث..." 
-                  value={filterTerm}
-                  onChange={e => setFilterTerm(e.target.value)}
-                  className="max-w-[300px]"
-                />
-              </div>
-              
-              <div className="rounded border overflow-auto max-h-[300px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10">
-                        <Checkbox 
-                          checked={selectedIds.length > 0 && selectedIds.length === filteredData.length}
-                          onCheckedChange={handleSelectAll}
-                        />
-                      </TableHead>
-                      {existingData.length > 0 && Object.keys(existingData[0])
-                        .filter(key => ['id', 'name', 'code', 'invoiceNumber', 'date', 'total', 'balance'].includes(key))
-                        .map(key => (
-                          <TableHead key={key}>{key}</TableHead>
-                        ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredData.map((item, index) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <Checkbox 
-                            checked={selectedIds.includes(item.id)}
-                            onCheckedChange={(checked) => handleRowSelect(item.id, !!checked)}
-                          />
-                        </TableCell>
-                        {Object.keys(item)
-                          .filter(key => ['id', 'name', 'code', 'invoiceNumber', 'date', 'total', 'balance'].includes(key))
-                          .map(key => (
-                            <TableCell key={key}>
-                              {item[key] !== null && item[key] !== undefined ? String(item[key]) : ''}
-                            </TableCell>
-                          ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="text-sm">
-                  تم تحديد {selectedIds.length} من {existingData.length}
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-      <CardFooter className="flex justify-end">
-        {isProcessing ? (
-          <div className="flex items-center gap-2">
-            <Spinner size="sm" />
-            <span>جاري المعالجة...</span>
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addRow}
+              className="mb-4"
+            >
+              إضافة صف
+            </Button>
           </div>
-        ) : (
-          selectedTab === "create" ? (
-            <Button onClick={handleCreate} disabled={batchItems.length === 0}>
-              إنشاء {batchItems.length} {entity}
-            </Button>
-          ) : selectedTab === "update" ? (
-            <Button onClick={handleUpdate} disabled={batchItems.length === 0}>
-              تحديث {batchItems.length} {entity}
-            </Button>
-          ) : selectedTab === "delete" ? (
-            <Button onClick={handleDelete} variant="destructive" disabled={selectedIds.length === 0}>
-              حذف {selectedIds.length} {entity}
-            </Button>
-          ) : (
-            <Button onClick={handleRecode} disabled={selectedIds.length === 0 || !selectedField}>
-              تغيير قيم {selectedIds.length} {entity}
-            </Button>
-          )
-        )}
+          
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {Object.entries(templateColumns).map(([key, header]) => (
+                    <TableHead key={key}>{header}</TableHead>
+                  ))}
+                  <TableHead className="w-[80px]">إجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.map((row, rowIndex) => (
+                  <TableRow key={rowIndex}>
+                    {Object.keys(templateColumns).map((columnKey) => (
+                      <TableCell key={`${rowIndex}-${columnKey}`}>
+                        <Input
+                          placeholder={templateColumns[columnKey]}
+                          value={row[columnKey] || ''}
+                          onChange={(e) => handleColumnChange(rowIndex, columnKey, e.target.value)}
+                          className={errors[`${rowIndex}-${columnKey}`] ? "border-red-500" : ""}
+                        />
+                        {errors[`${rowIndex}-${columnKey}`] && (
+                          <div className="text-xs text-red-500 mt-1">
+                            {errors[`${rowIndex}-${columnKey}`].join(', ')}
+                          </div>
+                        )}
+                      </TableCell>
+                    ))}
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeRow(rowIndex)}
+                        disabled={data.length === 1}
+                      >
+                        حذف
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button
+          variant="outline"
+          onClick={() => navigate(backUrl)}
+        >
+          إلغاء
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={isBusy}
+        >
+          {isBusy ? <><Spinner size="sm" className="mr-2" /> جاري المعالجة...</> : 'حفظ'}
+        </Button>
       </CardFooter>
     </Card>
   );
-}
+};
 
 export default BatchOperations;

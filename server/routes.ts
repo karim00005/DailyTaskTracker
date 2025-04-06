@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { createBackup, restoreBackup } from "./backup";
 import { importExcelData } from "./import";
+import { exportExcelData } from "./export";
 import { NextFunction } from "express";
 
 // Helper function to handle validation
@@ -599,8 +600,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/backup/create", createBackup);
   app.post("/api/backup/restore", restoreBackup);
   
-  // Excel import route
+  // Excel import and export routes
   app.post("/api/import/excel", importExcelData);
+  app.get("/api/export/excel", exportExcelData);
   
   // Batch Operations routes
   // Clients batch operations

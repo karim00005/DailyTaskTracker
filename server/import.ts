@@ -18,7 +18,7 @@ if (!fs.existsSync(TEMP_DIR)) {
 }
 
 // Process products from Excel
-export async function processProducts(worksheet: XLSX.WorkSheet) {
+export async function processProducts(worksheet: XLSX.WorkSheet, clearExisting: boolean = false) {
   try {
     // Convert worksheet to JSON
     const data = XLSX.utils.sheet_to_json(worksheet);
@@ -41,8 +41,10 @@ export async function processProducts(worksheet: XLSX.WorkSheet) {
       isActive: true
     }));
 
-    // Clear existing products (optional - you might want to keep existing and just add new ones)
-    await db.delete(products);
+    // Clear existing products if requested
+    if (clearExisting) {
+      await db.delete(products);
+    }
     
     // Insert new products
     if (productsToInsert.length > 0) {
@@ -57,7 +59,7 @@ export async function processProducts(worksheet: XLSX.WorkSheet) {
 }
 
 // Process clients from Excel
-export async function processClients(worksheet: XLSX.WorkSheet) {
+export async function processClients(worksheet: XLSX.WorkSheet, clearExisting: boolean = false) {
   try {
     // Convert worksheet to JSON
     const data = XLSX.utils.sheet_to_json(worksheet);
@@ -82,8 +84,10 @@ export async function processClients(worksheet: XLSX.WorkSheet) {
       isActive: row.isActive === false ? false : true
     }));
 
-    // Clear existing clients (optional)
-    await db.delete(clients);
+    // Clear existing clients if requested
+    if (clearExisting) {
+      await db.delete(clients);
+    }
     
     // Insert new clients
     if (clientsToInsert.length > 0) {
@@ -98,7 +102,7 @@ export async function processClients(worksheet: XLSX.WorkSheet) {
 }
 
 // Process transactions from Excel
-export async function processTransactions(worksheet: XLSX.WorkSheet) {
+export async function processTransactions(worksheet: XLSX.WorkSheet, clearExisting: boolean = false) {
   try {
     // Convert worksheet to JSON
     const data = XLSX.utils.sheet_to_json(worksheet);
@@ -117,7 +121,7 @@ export async function processTransactions(worksheet: XLSX.WorkSheet) {
         date: date.toISOString().split('T')[0], // Convert to YYYY-MM-DD string format
         time: now.toTimeString().split(' ')[0],
         amount: (row.amount || '0').toString(),
-        paymentMethod: row.paymentMethod || 'نقدي',
+        paymentMethod: row.paymentMethod || 'تحويل بنكي',
         reference: row.reference?.toString() || '',
         bank: row.bank?.toString() || '',
         notes: row.notes || '',
@@ -125,8 +129,10 @@ export async function processTransactions(worksheet: XLSX.WorkSheet) {
       };
     });
 
-    // Clear existing transactions (optional)
-    await db.delete(transactions);
+    // Clear existing transactions if requested
+    if (clearExisting) {
+      await db.delete(transactions);
+    }
     
     // Insert new transactions
     if (transactionsToInsert.length > 0) {
@@ -141,7 +147,7 @@ export async function processTransactions(worksheet: XLSX.WorkSheet) {
 }
 
 // Process invoices from Excel
-export async function processInvoices(worksheet: XLSX.WorkSheet, itemsWorksheet: XLSX.WorkSheet | null) {
+export async function processInvoices(worksheet: XLSX.WorkSheet, itemsWorksheet: XLSX.WorkSheet | null, clearExisting: boolean = false) {
   try {
     // Convert worksheet to JSON
     const data = XLSX.utils.sheet_to_json(worksheet);
@@ -149,9 +155,11 @@ export async function processInvoices(worksheet: XLSX.WorkSheet, itemsWorksheet:
       return { success: false, message: 'لا توجد بيانات للفواتير في الملف' };
     }
 
-    // Clear existing invoices and items
-    await db.delete(invoiceItems);
-    await db.delete(invoices);
+    // Clear existing invoices and items if requested
+    if (clearExisting) {
+      await db.delete(invoiceItems);
+      await db.delete(invoices);
+    }
     
     // Prepare invoices for insertion
     const invoicesMap = new Map();
@@ -175,9 +183,16 @@ export async function processInvoices(worksheet: XLSX.WorkSheet, itemsWorksheet:
         userId: 1
       };
 
-      // Insert invoice and keep track of its ID
-      const [newInvoice] = await db.insert(invoices).values(invoice).returning();
-      invoicesMap.set(invoice.invoiceNumber, newInvoice.id);
+      try {
+        // Insert invoice and keep track of its ID
+        const result = await db.insert(invoices).values(invoice).returning();
+        if (result && result.length > 0) {
+          const newInvoice = result[0];
+          invoicesMap.set(invoice.invoiceNumber, newInvoice.id);
+        }
+      } catch (error) {
+        console.error("Error inserting invoice:", error);
+      }
     }
     
     // Process invoice items if available
@@ -245,8 +260,14 @@ export async function importExcelData(req: Request, res: Response) {
       throw new Error('لم يتم رفع ملف Excel');
     }
     
+    // Get import options from fields
+    const importType = fields.importType ? fields.importType.toString() : 'all';
+    const clearExisting = fields.clearExisting === 'true';
+    
+    console.log('Import options:', { importType, clearExisting });
+    
     // Rename uploaded file for consistency
-    const uploadedFile = files.excelFile[0];
+    const uploadedFile = Array.isArray(files.excelFile) ? files.excelFile[0] : files.excelFile;
     fs.renameSync(uploadedFile.filepath, uploadedFilePath);
     
     // Read the Excel file
@@ -258,30 +279,54 @@ export async function importExcelData(req: Request, res: Response) {
       throw new Error('ملف Excel لا يحتوي على بيانات');
     }
     
-    // Process data based on sheet names
+    // Function to find sheet by pattern
+    const findSheet = (patterns: string[]): string | null => {
+      for (const sheet of sheetNames) {
+        const sheetNameLower = sheet.toLowerCase();
+        for (const pattern of patterns) {
+          if (sheetNameLower.includes(pattern)) {
+            return sheet;
+          }
+        }
+      }
+      return null;
+    };
+    
+    // Process data based on import type
     const results: any = {};
-    for (const sheetName of sheetNames) {
-      const lowerSheetName = sheetName.toLowerCase();
-      
-      if (lowerSheetName.includes('product') || lowerSheetName.includes('منتج')) {
-        results.products = await processProducts(workbook.Sheets[sheetName]);
-      } 
-      else if (lowerSheetName.includes('client') || lowerSheetName.includes('عميل')) {
-        results.clients = await processClients(workbook.Sheets[sheetName]);
+
+    // Process clients if requested
+    if (importType === 'all' || importType === 'clients') {
+      const clientsSheet = findSheet(['عميل', 'عملاء', 'client', 'clients', 'العملاء']);
+      if (clientsSheet) {
+        results.clients = await processClients(workbook.Sheets[clientsSheet], clearExisting);
       }
-      else if (lowerSheetName.includes('transaction') || lowerSheetName.includes('معامل')) {
-        results.transactions = await processTransactions(workbook.Sheets[sheetName]);
+    }
+
+    // Process products if requested
+    if (importType === 'all' || importType === 'products') {
+      const productsSheet = findSheet(['منتج', 'منتجات', 'product', 'products', 'المنتجات']);
+      if (productsSheet) {
+        results.products = await processProducts(workbook.Sheets[productsSheet], clearExisting);
       }
-      else if (lowerSheetName.includes('invoice') || lowerSheetName.includes('فاتور')) {
+    }
+
+    // Process transactions if requested
+    if (importType === 'all' || importType === 'transactions') {
+      const transactionsSheet = findSheet(['معامل', 'معاملات', 'transaction', 'transactions', 'المعاملات']);
+      if (transactionsSheet) {
+        results.transactions = await processTransactions(workbook.Sheets[transactionsSheet], clearExisting);
+      }
+    }
+
+    // Process invoices if requested
+    if (importType === 'all' || importType === 'invoices') {
+      const invoicesSheet = findSheet(['فاتور', 'فواتير', 'invoice', 'invoices', 'الفواتير']);
+      if (invoicesSheet) {
         // Find related invoice items sheet
-        const itemsSheetName = sheetNames.find(name => 
-          name.toLowerCase().includes('item') || 
-          name.toLowerCase().includes('عناصر') ||
-          name.toLowerCase().includes('بنود')
-        );
-        
-        const itemsSheet = itemsSheetName ? workbook.Sheets[itemsSheetName] : null;
-        results.invoices = await processInvoices(workbook.Sheets[sheetName], itemsSheet);
+        const itemsSheet = findSheet(['بنود', 'عناصر', 'item', 'items', 'بنود الفواتير', 'invoice items']);
+        const itemsWorksheet = itemsSheet ? workbook.Sheets[itemsSheet] : null;
+        results.invoices = await processInvoices(workbook.Sheets[invoicesSheet], itemsWorksheet, clearExisting);
       }
     }
     
