@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Icon } from "@/components/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -362,12 +363,12 @@ const ClientDetails: React.FC = () => {
             العودة
           </Button>
           {!isEditing ? (
-            <Button variant="primary" onClick={() => setIsEditing(true)}>
+            <Button onClick={() => setIsEditing(true)}>
               <Icon name="edit" className="ml-1" size={16} />
               تعديل
             </Button>
           ) : (
-            <Button variant="primary" onClick={handleSaveChanges}>
+            <Button onClick={handleSaveChanges}>
               <Icon name="save" className="ml-1" size={16} />
               حفظ
             </Button>
@@ -555,7 +556,7 @@ const ClientDetails: React.FC = () => {
                 فاتورة جديدة
               </Button>
               <Button 
-                variant="primary"
+                variant="default"
                 className="bg-green-600 hover:bg-green-700"
                 onClick={handleCreateReceipt}
               >
@@ -563,7 +564,7 @@ const ClientDetails: React.FC = () => {
                 سند قبض
               </Button>
               <Button
-                variant="primary"
+                variant="default"
                 className="bg-red-600 hover:bg-red-700"
                 onClick={handleCreatePayment}
               >
@@ -697,16 +698,16 @@ const ClientDetails: React.FC = () => {
                 <Card>
                   <CardContent className="p-0">
                     <Table>
-                      <thead>
-                        <tr>
-                          <th className="px-4 py-2 text-right">التاريخ</th>
-                          <th className="px-4 py-2 text-right">البيان</th>
-                          <th className="px-4 py-2 text-right">مدين</th>
-                          <th className="px-4 py-2 text-right">دائن</th>
-                          <th className="px-4 py-2 text-right">الرصيد</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">التاريخ</TableHead>
+                          <TableHead className="text-right">البيان</TableHead>
+                          <TableHead className="text-right">مدين</TableHead>
+                          <TableHead className="text-right">دائن</TableHead>
+                          <TableHead className="text-right">الرصيد</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {/* Combine and sort invoices and transactions */}
                         {[
                           ...(invoices || []).map(inv => ({
@@ -740,35 +741,35 @@ const ClientDetails: React.FC = () => {
                             }
                             
                             return (
-                              <tr key={`${item.type}-${index}`} className="hover:bg-gray-50">
-                                <td className="px-4 py-2 border-t">
+                              <TableRow key={`${item.type}-${index}`} className="hover:bg-gray-50">
+                                <TableCell>
                                   {new Date(item.date).toLocaleDateString("ar-EG")}
-                                </td>
-                                <td className="px-4 py-2 border-t">{item.description}</td>
-                                <td className="px-4 py-2 border-t">
+                                </TableCell>
+                                <TableCell>{item.description}</TableCell>
+                                <TableCell>
                                   {item.debit > 0 ? formatCurrency(item.debit) : "—"}
-                                </td>
-                                <td className="px-4 py-2 border-t">
+                                </TableCell>
+                                <TableCell>
                                   {item.credit > 0 ? formatCurrency(item.credit) : "—"}
-                                </td>
-                                <td className={`px-4 py-2 border-t font-medium ${
+                                </TableCell>
+                                <TableCell className={`font-medium ${
                                   balance > 0 ? "text-red-600" : balance < 0 ? "text-green-600" : ""
                                 }`}>
                                   {formatCurrency(balance)}
-                                </td>
-                              </tr>
+                                </TableCell>
+                              </TableRow>
                             );
                           })}
                           
                         {/* Empty state */}
                         {(!invoices || invoices.length === 0) && (!transactions || transactions.length === 0) && (
-                          <tr>
-                            <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-gray-500 py-8">
                               لا توجد حركات لعرضها في كشف الحساب
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </tbody>
+                      </TableBody>
                     </Table>
                   </CardContent>
                 </Card>
