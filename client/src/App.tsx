@@ -14,6 +14,8 @@ import ClientDetails from "@/pages/accounts/client-details";
 import ClientBatch from "@/pages/accounts/batch";
 import Inventory from "@/pages/inventory";
 import ProductBatch from "@/pages/inventory/batch";
+import Purchases from "@/pages/purchases";
+import PurchaseInvoice from "@/pages/purchases/invoice";
 import Receipt from "@/pages/treasury/receipt";
 import Payment from "@/pages/treasury/payment";
 import Reports from "@/pages/reports";
@@ -31,6 +33,8 @@ function Router() {
     const path = window.location.pathname;
     if (path.includes('/sales')) {
       setCurrentModule('sales');
+    } else if (path.includes('/purchases')) {
+      setCurrentModule('purchases');
     } else if (path.includes('/accounts')) {
       setCurrentModule('accounts');
     } else if (path.includes('/inventory')) {
@@ -54,6 +58,9 @@ function Router() {
         <Route path="/sales/invoice" component={SalesInvoice} />
         <Route path="/sales/invoice/:id" component={SalesInvoiceDetails} />
         <Route path="/sales/batch" component={SalesBatch} />
+        <Route path="/purchases" component={Purchases} />
+        <Route path="/purchases/invoice" component={PurchaseInvoice} />
+        <Route path="/purchases/invoice/:id" component={PurchaseInvoice} />
         <Route path="/accounts" component={Accounts} />
         <Route path="/accounts/client/:id" component={ClientDetails} />
         <Route path="/accounts/batch" component={ClientBatch} />

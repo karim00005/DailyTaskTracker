@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
-export type ModuleType = 'dashboard' | 'sales' | 'accounts' | 'inventory' | 'treasury' | 'settings';
+export type ModuleType = 'dashboard' | 'sales' | 'purchases' | 'accounts' | 'inventory' | 'treasury' | 'settings' | 'reports';
 
 interface User {
   id: number;
