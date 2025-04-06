@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeDatabase } from "./init-db";
-import { migrateDatabase } from "./migrate";
+import { migrateDatabase } from "./migrate.js";
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

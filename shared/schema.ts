@@ -133,6 +133,8 @@ export const insertWarehouseSchema = createInsertSchema(warehouses).pick({
   isActive: true,
 });
 
+
+
 // Invoices table
 export const invoices = sqliteTable("invoices", {
   id: integer("id").primaryKey(),

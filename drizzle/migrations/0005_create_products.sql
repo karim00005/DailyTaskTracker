@@ -1,16 +1,15 @@
-CREATE TABLE IF NOT EXISTS products (
+CREATE TABLE products (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL,
   name TEXT NOT NULL,
-  code TEXT,
   description TEXT,
-  unitOfMeasure TEXT,
+  unit_of_measure TEXT NOT NULL,
   category TEXT,
-  costPrice REAL,
-  sellPrice1 REAL,
-  sellPrice2 REAL,
-  sellPrice3 REAL,
-  stockQuantity REAL,
-  reorderLevel REAL,
-  isActive BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  cost_price REAL NOT NULL,
+  sell_price_1 REAL NOT NULL,
+  sell_price_2 REAL,
+  sell_price_3 REAL,
+  stock_quantity REAL NOT NULL DEFAULT 0,
+  reorder_level REAL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE
 );

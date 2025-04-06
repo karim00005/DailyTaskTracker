@@ -1,11 +1,8 @@
-    CREATE TABLE IF NOT EXISTS `users` (
-
-  `id` integer PRIMARY KEY NOT NULL,
-  `username` text NOT NULL,
-  `password` text NOT NULL,
-  `full_name` text NOT NULL,
-  `role` text DEFAULT 'user' NOT NULL,
-  `is_active` integer DEFAULT true NOT NULL
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS `users_username_unique` ON `users` (`username`);
