@@ -59,13 +59,13 @@ const Header: React.FC = () => {
             {navItems.map((item, index) => (
               <li key={index} className={index > 0 ? "" : "mr-1"}>
                 <Link href={item.path}>
-                  <a className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 ${
+                  <div className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 ${
                     (currentModule === item.module) 
                       ? "border-primary text-primary" 
                       : "border-transparent hover:border-primary hover:text-primary"
-                  } transition-colors`}>
+                  } transition-colors cursor-pointer`}>
                     {item.title}
-                  </a>
+                  </div>
                 </Link>
               </li>
             ))}

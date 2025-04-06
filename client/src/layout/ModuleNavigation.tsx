@@ -45,14 +45,14 @@ const ModuleNavigation: React.FC = () => {
               
               return (
                 <Link href={item.path} key={index}>
-                  <a className="module-nav-item">
+                  <div className="module-nav-item cursor-pointer">
                     <div className="flex flex-col items-center text-center p-2">
                       <div className={`module-nav-item-icon ${isActive ? 'module-nav-item-active' : 'module-nav-item-inactive'}`}>
                         <Icon name={item.icon} />
                       </div>
                       <span className="text-xs font-medium">{item.title}</span>
                     </div>
-                  </a>
+                  </div>
                 </Link>
               );
             })}

@@ -14,7 +14,7 @@ import Inventory from "@/pages/inventory";
 import Receipt from "@/pages/treasury/receipt";
 import Payment from "@/pages/treasury/payment";
 import Settings from "@/pages/settings";
-import Backup from "@/pages/settings/backup";
+import Backup from "./pages/settings/backup";
 import { useEffect } from "react";
 import { useAppContext, AppProvider } from "./context/AppContext";
 
