@@ -168,18 +168,19 @@ export async function processInvoices(worksheet: XLSX.WorkSheet, itemsWorksheet:
       const date = row.date ? new Date(row.date) : now;
       const invoice = {
         invoiceNumber: row.invoiceNumber?.toString() || `INV${Math.floor(Math.random() * 10000)}`,
+        invoiceType: row.invoiceType?.toString() || 'بيع',
         date: date.toISOString().split('T')[0], // Convert to YYYY-MM-DD string format
+        time: now.toTimeString().split(' ')[0], // Current time in HH:MM:SS format
         warehouseId: parseInt(row.warehouseId) || 1,
         clientId: parseInt(row.clientId) || 1,
-        subtotal: (row.subtotal || '0').toString(),
+        paymentMethod: row.paymentMethod?.toString() || 'نقدي',
+        total: (row.total || '0').toString(),
         discount: (row.discount || '0').toString(),
         tax: (row.tax || '0').toString(),
-        shipping: (row.shipping || '0').toString(),
-        total: (row.total || '0').toString(),
+        grandTotal: (row.grandTotal || row.total || '0').toString(),
         paid: (row.paid || '0').toString(),
-        due: (row.due || '0').toString(),
+        balance: (row.balance || row.due || '0').toString(),
         notes: row.notes || '',
-        status: row.status || 'مكتملة',
         userId: 1
       };
 

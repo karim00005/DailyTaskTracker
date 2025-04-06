@@ -1,13 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Plus, Filter, FileText, Printer, Download, Upload } from 'lucide-react';
+import { Search, Plus, Filter, FileText, Printer, Download, Upload, Calendar as CalendarIcon } from 'lucide-react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DatePicker } from '@/components/ui/date-picker';
+import { format } from "date-fns";
+import { ar } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+// Local DatePicker component
+interface DatePickerProps {
+  date: Date | undefined;
+  setDate: (date: Date | undefined) => void;
+  className?: string;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+function DatePicker({
+  date,
+  setDate,
+  className,
+  placeholder = "اختر تاريخ",
+  disabled = false,
+}: DatePickerProps) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant={"outline"}
+          disabled={disabled}
+          className={cn(
+            "w-full justify-start text-right font-normal",
+            !date && "text-muted-foreground",
+            className
+          )}
+        >
+          <CalendarIcon className="ml-2 h-4 w-4" />
+          {date ? format(date, "PPP", { locale: ar }) : <span>{placeholder}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={setDate}
+          initialFocus
+          locale={ar}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate } from '@/lib/utils';
