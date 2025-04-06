@@ -59,7 +59,7 @@ const SalesInvoice: React.FC = () => {
   // Next invoice number
   useEffect(() => {
     if (invoices) {
-      const salesInvoices = invoices.filter((inv: any) => inv.invoiceType === "بيع");
+      const salesInvoices = Array.isArray(invoices) ? invoices.filter((inv) => inv.invoiceType === "بيع") : [];
       const lastInvoice = salesInvoices[salesInvoices.length - 1];
       const lastNumber = lastInvoice ? parseInt(lastInvoice.invoiceNumber) : 0;
       setInvoiceNumber((lastNumber + 1).toString());
@@ -80,10 +80,12 @@ const SalesInvoice: React.FC = () => {
 
   // Search products
   const filteredProducts = productSearch
-    ? products?.filter((product: any) =>
-        product.name.includes(productSearch) ||
-        product.code.includes(productSearch)
-      )
+    ? Array.isArray(products)
+      ? products.filter((product: any) =>
+          product.name.includes(productSearch) ||
+          product.code.includes(productSearch)
+        )
+      : []
     : [];
 
   // Handle product selection
@@ -104,7 +106,7 @@ const SalesInvoice: React.FC = () => {
       return;
     }
 
-    const product = products?.find((p: any) => p.id.toString() === selectedProductId);
+    const product = Array.isArray(products) ? products.find((p) => p.id.toString() === selectedProductId) : null;
     if (!product) {
       toast({
         title: "خطأ",

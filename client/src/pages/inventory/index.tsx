@@ -173,7 +173,7 @@ const Inventory: React.FC = () => {
     defaultValues: {
       code: "",
       name: "",
-      unitOfMeasure: "قطعة",
+      unitOfMeasure: "طن",
       costPrice: "0",
       sellPrice1: "0",
       stockQuantity: "0",
@@ -187,7 +187,7 @@ const Inventory: React.FC = () => {
     defaultValues: {
       code: "",
       name: "",
-      unitOfMeasure: "قطعة",
+      unitOfMeasure: "طن",
       costPrice: "0",
       sellPrice1: "0",
       stockQuantity: "0",
@@ -215,19 +215,9 @@ const Inventory: React.FC = () => {
   };
   
   // Filter products
-  const filteredProducts = products
-    ?.filter((product: any) => {
-      const matchesSearch = searchTerm === "" ||
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.code.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesCategory = filterCategory === "all" || product.category === filterCategory;
-      
-      const matchesLowStock = !showLowStock || 
-        (product.reorderLevel && parseFloat(product.stockQuantity) <= parseFloat(product.reorderLevel));
-      
-      return matchesSearch && matchesCategory && matchesLowStock;
-    }) || [];
+  const filteredProducts = Array.isArray(products)
+    ? products.filter((product) => product.category === filterCategory)
+    : [];
   
   // Handle product details view
   const handleViewProduct = (product: any) => {
@@ -612,7 +602,7 @@ const Inventory: React.FC = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="قطعة">قطعة</SelectItem>
+                          <SelectItem value="طن">طن</SelectItem>
                           <SelectItem value="كج">كيلو جرام</SelectItem>
                           <SelectItem value="متر">متر</SelectItem>
                           <SelectItem value="لتر">لتر</SelectItem>
@@ -848,7 +838,7 @@ const Inventory: React.FC = () => {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="قطعة">قطعة</SelectItem>
+                                <SelectItem value="طن">طن</SelectItem>
                                 <SelectItem value="كج">كيلو جرام</SelectItem>
                                 <SelectItem value="متر">متر</SelectItem>
                                 <SelectItem value="لتر">لتر</SelectItem>

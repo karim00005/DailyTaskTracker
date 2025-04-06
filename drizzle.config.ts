@@ -1,12 +1,11 @@
 import type { Config } from "drizzle-kit";
 
 export default {
-  schema: "./shared/schema.ts",  // added schema property
-  out: "./drizzle",
-  driver: "d1-http",
-  dialect: "sqlite", // added dialect parameter
+  schema: "./shared/schema.ts",
+  driver: "sqlite", // Use a compatible driver
+  dialect: "sqlite",
   dbCredentials: {
-    databaseId: "local",
-    url: "./local.db",
+    url: "./db.sqlite"
   },
+  out: "./drizzle",
 } satisfies Config;

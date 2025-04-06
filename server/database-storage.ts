@@ -29,13 +29,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(user).returning();
+    const userData = {
+      ...user,
+      isActive: user.isActive ? 1 : 0, // Convert boolean to 0 or 1
+    };
+    const result = await db.insert(users).values(userData).returning();
     return result[0];
   }
 
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
-    const result = await db.update(users)
-      .set(userData)
+    const updateData: Partial<User> = {
+      ...userData,
+      isActive: userData.isActive !== undefined ? (userData.isActive ? 1 : 0) : userData.isActive, // Convert boolean to 0 or 1 if provided
+    };
+    const result = await db
+      .update(users)
+      .set(updateData)
       .where(eq(users.id, id))
       .returning();
     return result[0];
@@ -43,7 +52,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: number): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.id, id));
-    return result.count > 0;
+    return result.changes > 0;
   }
 
   // Client operations
@@ -62,13 +71,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createClient(client: InsertClient): Promise<Client> {
-    const result = await db.insert(clients).values(client).returning();
+    const processedClient = {
+      ...client,
+      balance: client.balance !== undefined ? Number(client.balance) : 0,
+      createdAt: client.createdAt instanceof Date ? client.createdAt : new Date(client.createdAt || Date.now()),
+      updatedAt: client.updatedAt instanceof Date ? client.updatedAt : new Date(),
+    };
+    const result = await db.insert(clients).values(processedClient).returning();
     return result[0];
   }
 
   async updateClient(id: number, clientData: Partial<Client>): Promise<Client | undefined> {
-    const result = await db.update(clients)
-      .set(clientData)
+    const processedData = {
+      ...clientData,
+      ...(clientData.balance !== undefined && { balance: Number(clientData.balance) }),
+      ...(clientData.createdAt && { 
+        createdAt: clientData.createdAt instanceof Date ? clientData.createdAt : new Date(clientData.createdAt)
+      }),
+      ...(clientData.updatedAt && { 
+        updatedAt: clientData.updatedAt instanceof Date ? clientData.updatedAt : new Date(clientData.updatedAt)
+      }),
+    };
+    const result = await db
+      .update(clients)
+      .set(processedData)
       .where(eq(clients.id, id))
       .returning();
     return result[0];
@@ -76,7 +102,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClient(id: number): Promise<boolean> {
     const result = await db.delete(clients).where(eq(clients.id, id));
-    return result.count > 0;
+    return result.changes > 0;
   }
 
   // Product operations
@@ -95,21 +121,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
-    const result = await db.insert(products).values(product).returning();
+    const processedProduct = {
+      ...product,
+      isActive: product.isActive === true || product.isActive === "true", // convert to boolean
+    };
+    const result = await db.insert(products).values(processedProduct).returning();
     return result[0];
   }
 
   async updateProduct(id: number, productData: Partial<Product>): Promise<Product | undefined> {
-    const result = await db.update(products)
-      .set(productData)
-      .where(eq(products.id, id))
-      .returning();
+    const processedData = {
+      ...productData,
+      ...(productData.isActive !== undefined && { 
+        isActive: productData.isActive === true || productData.isActive === "true" 
+      }),
+    };
+    const result = await db.update(products).set(processedData).where(eq(products.id, id)).returning();
     return result[0];
   }
 
   async deleteProduct(id: number): Promise<boolean> {
     const result = await db.delete(products).where(eq(products.id, id));
-    return result.count > 0;
+    return result.changes > 0;
   }
   
   async updateProductStock(id: number, quantity: number): Promise<Product | undefined> {
@@ -120,7 +153,7 @@ export class DatabaseStorage implements IStorage {
     const newStock = currentStock + quantity;
     
     const result = await db.update(products)
-      .set({ stockQuantity: newStock.toString() })
+      .set({ stockQuantity: newStock })
       .where(eq(products.id, id))
       .returning();
       
@@ -180,7 +213,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const result = await db.delete(warehouses).where(eq(warehouses.id, id));
-    return result.count > 0;
+    return result.changes > 0;
   }
 
   // Invoice operations
@@ -199,7 +232,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
-    const result = await db.insert(invoices).values(invoice).returning();
+    // Convert createdAt to a Date if it exists and isn't already one
+    const createdAt = invoice.createdAt 
+      ? new Date(invoice.createdAt) 
+      : new Date();
+      
+    // Optionally, apply similar conversion to other timestamp fields if any
+
+    const invoiceData = {
+      ...invoice,
+      createdAt,  // now guaranteed to be a Date
+      discount: invoice.discount ?? 0,
+      tax: invoice.tax ?? 0,
+      paid: invoice.paid ?? 0,
+      // Calculate grandTotal if not provided.
+      grandTotal: invoice.grandTotal ?? (invoice.total - (invoice.discount ?? 0) + (invoice.tax ?? 0)),
+      createdAt: invoice.createdAt ?? Date.now(),
+    };
+
+    console.log("DEBUG: invoiceData", invoiceData); // log for debugging
+    
+    const result = await db.insert(invoices).values(invoiceData).returning();
+    console.log("DEBUG: createInvoice result", result);  // Debug log
     
     // Update client balance for the invoice
     const client = await this.getClient(invoice.clientId);
@@ -288,7 +342,7 @@ export class DatabaseStorage implements IStorage {
     
     // Then delete the invoice
     const result = await db.delete(invoices).where(eq(invoices.id, id));
-    return result.count > 0;
+    return result.changes > 0;
   }
 
   async getInvoicesByClient(clientId: number): Promise<Invoice[]> {
@@ -391,7 +445,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     const result = await db.delete(invoiceItems).where(eq(invoiceItems.id, id));
-    return result.count > 0;
+    return result.changes > 0;
   }
 
   // Transaction operations
@@ -410,7 +464,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    const result = await db.insert(transactions).values(transaction).returning();
+    // Ensure createdAt is a Date and amount is numeric.
+    const processedTransaction = {
+      ...transaction,
+      createdAt:
+        transaction.createdAt instanceof Date
+          ? transaction.createdAt
+          : new Date(transaction.createdAt || Date.now()),
+      amount: Number(transaction.amount),
+    };
+    const result = await db.insert(transactions).values(processedTransaction).returning();
     
     // Update client balance
     const client = await this.getClient(transaction.clientId);
@@ -435,8 +498,18 @@ export class DatabaseStorage implements IStorage {
     const oldTransaction = await this.getTransaction(id);
     if (!oldTransaction) return undefined;
     
+    const processedData = {
+      ...transactionData,
+      ...(transactionData.createdAt && {
+        createdAt:
+          transactionData.createdAt instanceof Date
+            ? transactionData.createdAt
+            : new Date(transactionData.createdAt)
+      }),
+      ...(transactionData.amount !== undefined && { amount: Number(transactionData.amount) }),
+    };
     const result = await db.update(transactions)
-      .set(transactionData)
+      .set(processedData)
       .where(eq(transactions.id, id))
       .returning();
     
@@ -494,7 +567,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     const result = await db.delete(transactions).where(eq(transactions.id, id));
-    return result.count > 0;
+    return result.changes > 0;
   }
 
   async getTransactionsByClient(clientId: number): Promise<Transaction[]> {

@@ -74,21 +74,13 @@ const Backup: React.FC = () => {
   // Handle file selection for restore
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      if (file.name.endsWith('.SahlBackup3')) {
-        setBackupFile(file);
-        setRestoreDialogOpen(true);
-      } else {
-        toast({
-          title: "خطأ",
-          description: "الملف المختار ليس ملف نسخة احتياطية صحيح. يجب أن ينتهي بـ .SahlBackup3",
-          variant: "destructive",
-        });
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }
+    if (files && files.length > 0 && files[0].name.endsWith(".SahlBackup3")) {
+      setBackupFile(files[0]);
+    } else {
+      toast({
+        title: "Error",
+        description: "Invalid backup file",
+      });
     }
   };
 

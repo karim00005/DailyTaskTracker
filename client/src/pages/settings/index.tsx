@@ -10,6 +10,13 @@ import { apiRequest } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings as SettingsType } from "@shared/schema";
 
+const settingsMenu = [
+  { name: "users", icon: "user" },
+  { name: "package", icon: "box" },
+  { name: "file-text", icon: "file" },
+  { name: "repeat", icon: "refresh" },
+];
+
 const Settings: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();

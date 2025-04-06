@@ -23,19 +23,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 // Clients table
 export const clients = sqliteTable("clients", {
-  id: integer("id").primaryKey(),
+  id: integer("id").primaryKey().notNull(),
   name: text("name").notNull(),
-  contactPerson: text("contact_person"),
-  email: text("email"),
-  phone: text("phone"),
-  address: text("address"),
-  city: text("city"),
-  state: text("state"),
-  zipCode: text("zip_code"),
-  country: text("country"),
-  notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).defaultNow(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).defaultNow(),
+  balance: real("balance").notNull().default(0), // Added balance column
+  accountType: text("account_type").notNull().default("مدين"), // Ensure accountType field exists
+  createdAt: integer("created_at", { mode: "timestamp" }).defaultNow(), // Ensure createdAt field exists
 });
 
 export const insertClientSchema = createInsertSchema(clients);

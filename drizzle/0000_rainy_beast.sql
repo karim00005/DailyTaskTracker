@@ -1,6 +1,7 @@
 CREATE TABLE `clients` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
+	`balance` real DEFAULT 0 NOT NULL, -- Ensure the balance column exists
 	`contact_person` text,
 	`email` text,
 	`phone` text,
@@ -13,7 +14,7 @@ CREATE TABLE `clients` (
 	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)),
 	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer))
 );
---> statement-breakpoint
+
 CREATE TABLE `invoice_items` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`invoice_id` integer NOT NULL,
@@ -24,7 +25,7 @@ CREATE TABLE `invoice_items` (
 	`tax` real DEFAULT 0 NOT NULL,
 	`total` real NOT NULL
 );
---> statement-breakpoint
+
 CREATE TABLE `invoices` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`invoice_number` text NOT NULL,
@@ -44,7 +45,7 @@ CREATE TABLE `invoices` (
 	`notes` text,
 	`created_at` integer NOT NULL
 );
---> statement-breakpoint
+
 CREATE TABLE `products` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`code` text NOT NULL,
@@ -60,7 +61,7 @@ CREATE TABLE `products` (
 	`reorder_level` real,
 	`is_active` integer DEFAULT true NOT NULL
 );
---> statement-breakpoint
+
 CREATE TABLE `projects` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`client_id` integer NOT NULL,
@@ -75,7 +76,7 @@ CREATE TABLE `projects` (
 	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)),
 	FOREIGN KEY (`client_id`) REFERENCES `clients`(`id`) ON UPDATE no action ON DELETE no action
 );
---> statement-breakpoint
+
 CREATE TABLE `settings` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`company_name` text NOT NULL,
@@ -91,7 +92,7 @@ CREATE TABLE `settings` (
 	`backup_path` text,
 	`cloud_backup_path` text
 );
---> statement-breakpoint
+
 CREATE TABLE `tasks` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`project_id` integer NOT NULL,
@@ -107,7 +108,7 @@ CREATE TABLE `tasks` (
 	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)),
 	FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON UPDATE no action ON DELETE no action
 );
---> statement-breakpoint
+
 CREATE TABLE `timesheets` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`task_id` integer NOT NULL,
@@ -122,7 +123,7 @@ CREATE TABLE `timesheets` (
 	FOREIGN KEY (`task_id`) REFERENCES `tasks`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
---> statement-breakpoint
+
 CREATE TABLE `transactions` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`transaction_number` text NOT NULL,
@@ -138,7 +139,7 @@ CREATE TABLE `transactions` (
 	`user_id` integer NOT NULL,
 	`created_at` integer NOT NULL
 );
---> statement-breakpoint
+
 CREATE TABLE `users` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`username` text NOT NULL,
@@ -147,8 +148,9 @@ CREATE TABLE `users` (
 	`role` text DEFAULT 'user' NOT NULL,
 	`is_active` integer DEFAULT true NOT NULL
 );
---> statement-breakpoint
-CREATE UNIQUE INDEX `users_username_unique` ON `users` (`username`);--> statement-breakpoint
+
+CREATE UNIQUE INDEX `users_username_unique` ON `users` (`username`);
+
 CREATE TABLE `warehouses` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,

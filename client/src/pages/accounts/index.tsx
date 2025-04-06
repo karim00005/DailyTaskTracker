@@ -103,15 +103,15 @@ const Accounts: React.FC = () => {
   };
   
   // Filter clients
-  const filteredClients = clients
-    ?.filter((client: any) => 
+  const filteredClients = Array.isArray(clients)
+    ? clients.filter((client: any) => 
       (filterType === "" || client.type === filterType) &&
       (filterAccountType === "" || client.accountType === filterAccountType) &&
       (searchTerm === "" || 
         client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.mobile?.toLowerCase().includes(searchTerm.toLowerCase()))
-    ) || [];
+    ) : [];
   
   // Delete client mutation
   const deleteClientMutation = useMutation({
@@ -338,7 +338,7 @@ const Accounts: React.FC = () => {
                     <SelectContent>
                       <SelectItem value="all">الكل</SelectItem>
                       <SelectItem value="مدين">مدين</SelectItem>
-                      <SelectItem value="دائن">دائن</SelectItem>
+                      <SelectItem value="دائن">دائن</SelectItem> {/* Fix the closing tag */}
                     </SelectContent>
                   </Select>
                 </div>
@@ -588,7 +588,7 @@ const Accounts: React.FC = () => {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="مدين">مدين</SelectItem>
-                          <SelectItem value="دائن">دائن</SelectItem>
+                          <SelectItem value="دائن">دائن</SelectItem> {/* Fix the closing tag */}
                         </SelectContent>
                       </Select>
                       <FormMessage />

@@ -13,34 +13,19 @@ export interface ApiRequestOptions {
   data?: unknown | undefined;
 }
 
-export async function apiRequest(
-  options: ApiRequestOptions | string,
-  method?: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  let url: string;
-  let requestMethod: string;
-  let requestData: unknown | undefined;
-
-  // Handling both formats for backward compatibility
-  if (typeof options === 'string') {
-    url = options;
-    requestMethod = method || 'GET';
-    requestData = data;
-  } else {
-    url = options.url;
-    requestMethod = options.method;
-    requestData = options.data;
+export async function apiRequest(method: string, url: string, requestData?: any) {
+  console.log("DEBUG: apiRequest", { method, url, requestData });
+  const validMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+  if (!validMethods.includes(method.toUpperCase())) {
+    throw new Error(`Invalid HTTP method: ${method}`);
   }
-
+  
   const res = await fetch(url, {
-    method: requestMethod,
+    method,
     headers: requestData ? { "Content-Type": "application/json" } : {},
     body: requestData ? JSON.stringify(requestData) : undefined,
-    credentials: "include",
   });
-
-  await throwIfResNotOk(res);
+  
   return res;
 }
 

@@ -3,10 +3,27 @@ import {
   users, clients, products, warehouses, settings
 } from '@shared/schema';
 
-async function initializeDatabase() {
+const checkClientsSchema = async () => {
+  try {
+    await db.select().from(clients).where(eq(clients.balance, 0));
+    console.log("The 'balance' column exists in the clients table.");
+    return true;
+  } catch (error) {
+    console.log("The 'balance' column does NOT exist in the clients table.");
+    return false;
+  }
+};
+
+export async function initializeDatabase() {
   console.log("Initializing database with default data...");
   
   try {
+    // Check the clients table schema
+    const hasBalance = await checkClientsSchema();
+    if (!hasBalance) {
+      throw new Error("Database schema is not properly initialized");
+    }
+    
     // Check if we have any users
     const existingUsers = await db.select().from(users);
     
@@ -60,38 +77,34 @@ async function initializeDatabase() {
     
     if (existingClients.length === 0) {
       console.log("Creating sample clients...");
-      await db.insert(clients).values([
-        {
-          name: "محمد عبدالله حسين عبدالعظيم",
-          type: "عميل",
-          accountType: "مدين",
-          code: "C001",
-          taxId: null,
-          balance: "0",
-          address: "88 شارع صدقي",
-          city: "طنطا",
-          phone: null,
-          mobile: "01099998017",
-          email: null,
-          notes: null,
-          isActive: true
-        },
-        {
-          name: "جلال البيه",
-          type: "عميل",
-          accountType: "مدين",
-          code: "C002",
-          taxId: null,
-          balance: "0",
-          address: "المعادي",
-          city: "القاهرة",
-          phone: null,
-          mobile: "01234567890",
-          email: null,
-          notes: null,
-          isActive: true
-        }
-      ]);
+      await db.insert(clients).values({
+        name: "محمد عبدالله حسين عبدالعظيم",
+        accountType: "مدين",
+        balance: 0,
+        address: "88 شارع صدقي",
+        city: "طنطا",
+        phone: null,
+        mobile: "01099998017",
+        email: null,
+        notes: null,
+        isActive: true,
+        createdAt: Date.now()
+      });
+
+      await db.insert(clients).values({
+        name: "جلال البيه",
+        accountType: "مدين",
+        balance: 0,
+        address: "المعادي",
+        city: "القاهرة",
+        phone: null,
+        mobile: "01234567890",
+        email: null,
+        notes: null,
+        isActive: true,
+        createdAt: Date.now()
+      });
+
     }
 
     // Check if we have any products
@@ -118,10 +131,6 @@ async function initializeDatabase() {
     console.log("Database initialization completed successfully!");
   } catch (error) {
     console.error("Error initializing database:", error);
+    throw error;
   }
 }
-
-// Export the function to be called from elsewhere
-export { initializeDatabase };
-
-// No need for direct execution check in ESM

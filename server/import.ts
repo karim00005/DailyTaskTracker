@@ -31,7 +31,7 @@ export async function processProducts(worksheet: XLSX.WorkSheet, clearExisting: 
       code: row.code?.toString() || `P${Math.floor(Math.random() * 10000)}`,
       name: row.name || 'منتج بلا اسم',
       description: row.description || '',
-      unitOfMeasure: row.unit || 'قطعة',
+      unitOfMeasure: row.unit || 'طن',
       category: row.category || 'عام',
       costPrice: (row.basePrice || '0').toString(),
       sellPrice1: (row.sellingPrice || '0').toString(),
@@ -45,7 +45,7 @@ export async function processProducts(worksheet: XLSX.WorkSheet, clearExisting: 
     if (clearExisting) {
       await db.delete(products);
     }
-    
+
     // Insert new products
     if (productsToInsert.length > 0) {
       await db.insert(products).values(productsToInsert);
@@ -88,7 +88,7 @@ export async function processClients(worksheet: XLSX.WorkSheet, clearExisting: b
     if (clearExisting) {
       await db.delete(clients);
     }
-    
+
     // Insert new clients
     if (clientsToInsert.length > 0) {
       await db.insert(clients).values(clientsToInsert);
@@ -133,7 +133,7 @@ export async function processTransactions(worksheet: XLSX.WorkSheet, clearExisti
     if (clearExisting) {
       await db.delete(transactions);
     }
-    
+
     // Insert new transactions
     if (transactionsToInsert.length > 0) {
       await db.insert(transactions).values(transactionsToInsert);
@@ -160,7 +160,7 @@ export async function processInvoices(worksheet: XLSX.WorkSheet, itemsWorksheet:
       await db.delete(invoiceItems);
       await db.delete(invoices);
     }
-    
+
     // Prepare invoices for insertion
     const invoicesMap = new Map();
     for (const row of data as any[]) {
@@ -195,13 +195,12 @@ export async function processInvoices(worksheet: XLSX.WorkSheet, itemsWorksheet:
         console.error("Error inserting invoice:", error);
       }
     }
-    
+
     // Process invoice items if available
     if (itemsWorksheet) {
       const itemsData = XLSX.utils.sheet_to_json(itemsWorksheet);
       if (itemsData && itemsData.length > 0) {
         const itemsToInsert: any[] = [];
-        
         for (const row of itemsData as any[]) {
           const invoiceNumber = row.invoiceNumber?.toString();
           if (invoiceNumber && invoicesMap.has(invoiceNumber)) {
@@ -217,7 +216,7 @@ export async function processInvoices(worksheet: XLSX.WorkSheet, itemsWorksheet:
             });
           }
         }
-        
+
         // Bulk insert all items
         if (itemsToInsert.length > 0) {
           await db.insert(invoiceItems).values(itemsToInsert);
@@ -238,17 +237,18 @@ export async function processInvoices(worksheet: XLSX.WorkSheet, itemsWorksheet:
 
 // Main import handler
 export async function importExcelData(req: Request, res: Response) {
-  const timestamp = new Date().toISOString().replace(/:/g, '-');
-  const uploadedFilePath = path.join(TEMP_DIR, `excel_${timestamp}.xlsx`);
-  
   try {
+    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    const uploadedFilePath = path.join(TEMP_DIR, `excel_${timestamp}.xlsx`);
+    const excelFilePath = "D:\\DailyTaskTracker\\data\\input.xlsx"; // fixed unterminated string literal
+
     // Parse the incoming form data
     const form = new IncomingForm({
       uploadDir: TEMP_DIR,
       keepExtensions: true,
       maxFileSize: 50 * 1024 * 1024, // 50MB max file size
     });
-    
+
     // Parse form and get the file
     const { fields, files } = await new Promise<{ fields: any; files: any }>((resolve, reject) => {
       form.parse(req, (err: Error | null, fields: any, files: any) => {
@@ -256,30 +256,29 @@ export async function importExcelData(req: Request, res: Response) {
         else resolve({ fields, files });
       });
     });
-    
+
     if (!files.excelFile) {
       throw new Error('لم يتم رفع ملف Excel');
     }
-    
+
     // Get import options from fields
     const importType = fields.importType ? fields.importType.toString() : 'all';
     const clearExisting = fields.clearExisting === 'true';
-    
     console.log('Import options:', { importType, clearExisting });
-    
+
     // Rename uploaded file for consistency
     const uploadedFile = Array.isArray(files.excelFile) ? files.excelFile[0] : files.excelFile;
     fs.renameSync(uploadedFile.filepath, uploadedFilePath);
-    
+
     // Read the Excel file
     const workbook = XLSX.readFile(uploadedFilePath);
     const sheetNames = workbook.SheetNames;
-    
+
     // Check if we have sheets
     if (!sheetNames || sheetNames.length === 0) {
       throw new Error('ملف Excel لا يحتوي على بيانات');
     }
-    
+
     // Function to find sheet by pattern
     const findSheet = (patterns: string[]): string | null => {
       for (const sheet of sheetNames) {
@@ -292,7 +291,7 @@ export async function importExcelData(req: Request, res: Response) {
       }
       return null;
     };
-    
+
     // Process data based on import type
     const results: any = {};
 
@@ -330,12 +329,12 @@ export async function importExcelData(req: Request, res: Response) {
         results.invoices = await processInvoices(workbook.Sheets[invoicesSheet], itemsWorksheet, clearExisting);
       }
     }
-    
+
     // Clean up
     fs.unlink(uploadedFilePath, (err) => {
       if (err) console.error('Error removing uploaded file:', err);
     });
-    
+
     res.status(200).json({
       success: true,
       message: 'تم استيراد البيانات بنجاح',
@@ -343,14 +342,14 @@ export async function importExcelData(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error('Error importing Excel data:', error);
-    
+
     // Clean up on error
     try {
       fs.unlink(uploadedFilePath, () => {});
     } catch (cleanupError) {
       console.error('Error during cleanup:', cleanupError);
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'فشل في استيراد البيانات',

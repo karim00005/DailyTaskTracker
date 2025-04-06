@@ -1,0 +1,2 @@
+ALTER TABLE `clients`
+ADD COLUMN `balance` REAL DEFAULT 0 NOT NULL;

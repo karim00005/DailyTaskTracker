@@ -78,17 +78,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/users", async (req: Request, res: Response) => {
-    const userData = validate(insertUserSchema, req.body);
-    if (!userData) {
+    // Validate using your schema
+    const validatedUserData = validate(insertUserSchema, req.body);
+    if (!validatedUserData) {
       return res.status(400).json({ message: "بيانات المستخدم غير صالحة" });
     }
 
-    const existingUser = await storage.getUserByUsername(userData.username);
+    const existingUser = await storage.getUserByUsername(validatedUserData.username);
     if (existingUser) {
       return res.status(409).json({ message: "اسم المستخدم موجود بالفعل" });
     }
 
-    const newUser = await storage.createUser(userData);
+    // Use a new variable name to parse the request data
+    const parsedUserData = {
+      ...req.body,
+      isActive: req.body.isActive === 'true' || req.body.isActive === true, // Parse boolean if needed
+    };
+    const newUser = await storage.createUser(parsedUserData);
     const { password, ...userWithoutPassword } = newUser;
     return res.status(201).json(userWithoutPassword);
   });
@@ -113,7 +119,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
 
-    const updatedUser = await storage.updateUser(userId, userData);
+    // Use a different variable name to avoid redeclaration
+    const updatedUserData = {
+      ...req.body,
+      isActive: req.body.isActive === 'true' || req.body.isActive === true, // Parse if provided
+    };
+    const updatedUser = await storage.updateUser(userId, updatedUserData);
     if (!updatedUser) {
       return res.status(500).json({ message: "حدث خطأ أثناء تحديث المستخدم" });
     }
@@ -384,13 +395,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/invoices", async (req: Request, res: Response) => {
-    const invoiceData = validate(insertInvoiceSchema, req.body);
-    if (!invoiceData) {
-      return res.status(400).json({ message: "بيانات الفاتورة غير صالحة" });
+    try {
+      const invoiceData = req.body; // or validate your invoice data
+      const newInvoice = await storage.createInvoice(invoiceData);
+      console.log("DEBUG: newInvoice", newInvoice);  // Debug log
+      return res.status(201).json(newInvoice);
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      return res.status(500).json({ message: "Error creating invoice" });
     }
-
-    const newInvoice = await storage.createInvoice(invoiceData);
-    return res.status(201).json(newInvoice);
   });
 
   app.post("/api/invoices/:id/items", async (req: Request, res: Response) => {
