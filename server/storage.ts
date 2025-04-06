@@ -514,6 +514,25 @@ export class MemStorage implements IStorage {
       paid: invoice.paid || "0"
     };
     
+    // Update client balance for the invoice
+    const client = await this.getClient(invoice.clientId);
+    if (client) {
+      const balance = parseFloat(client.balance.toString());
+      const invoiceAmount = parseFloat(newInvoice.balance.toString());
+      
+      let newBalance = balance;
+      // For sales invoices, add to client's balance
+      if (invoice.invoiceType === "بيع") {
+        newBalance += invoiceAmount;
+      } 
+      // For purchase invoices, subtract from client's balance
+      else if (invoice.invoiceType === "شراء") {
+        newBalance -= invoiceAmount;
+      }
+      
+      await this.updateClient(client.id, { balance: newBalance.toString() });
+    }
+    
     this.invoices.set(id, newInvoice);
     return newInvoice;
   }
@@ -523,11 +542,57 @@ export class MemStorage implements IStorage {
     if (!invoice) return undefined;
 
     const updatedInvoice = { ...invoice, ...invoiceData };
+    
+    // If the balance has changed, update client balance
+    if (invoiceData.balance && invoiceData.balance !== invoice.balance) {
+      const client = await this.getClient(invoice.clientId);
+      if (client) {
+        const clientBalance = parseFloat(client.balance.toString());
+        
+        // Reverse old invoice effect
+        let newBalance = clientBalance;
+        if (invoice.invoiceType === "بيع") {
+          newBalance -= parseFloat(invoice.balance.toString());
+        } else if (invoice.invoiceType === "شراء") {
+          newBalance += parseFloat(invoice.balance.toString());
+        }
+        
+        // Apply new invoice effect
+        if (updatedInvoice.invoiceType === "بيع") {
+          newBalance += parseFloat(updatedInvoice.balance.toString());
+        } else if (updatedInvoice.invoiceType === "شراء") {
+          newBalance -= parseFloat(updatedInvoice.balance.toString());
+        }
+        
+        await this.updateClient(client.id, { balance: newBalance.toString() });
+      }
+    }
+    
     this.invoices.set(id, updatedInvoice);
     return updatedInvoice;
   }
 
   async deleteInvoice(id: number): Promise<boolean> {
+    const invoice = this.invoices.get(id);
+    if (!invoice) return false;
+    
+    // Update client balance before deletion
+    const client = await this.getClient(invoice.clientId);
+    if (client) {
+      const balance = parseFloat(client.balance.toString());
+      const invoiceAmount = parseFloat(invoice.balance.toString());
+      
+      let newBalance = balance;
+      // Reverse invoice effect
+      if (invoice.invoiceType === "بيع") {
+        newBalance -= invoiceAmount;
+      } else if (invoice.invoiceType === "شراء") {
+        newBalance += invoiceAmount;
+      }
+      
+      await this.updateClient(client.id, { balance: newBalance.toString() });
+    }
+    
     // Also delete related invoice items
     const items = await this.getInvoiceItems(id);
     for (const item of items) {

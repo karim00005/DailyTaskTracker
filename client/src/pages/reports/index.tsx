@@ -120,7 +120,7 @@ const Reports: React.FC = () => {
                       <SelectValue placeholder="-- الكل --" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- الكل --</SelectItem>
+                      <SelectItem value="all">-- الكل --</SelectItem>
                       {warehouses?.map((warehouse: any) => (
                         <SelectItem key={warehouse.id} value={warehouse.id.toString()}>
                           {warehouse.name}
@@ -190,7 +190,7 @@ const Reports: React.FC = () => {
                       <SelectValue placeholder="-- الكل --" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- الكل --</SelectItem>
+                      <SelectItem value="all">-- الكل --</SelectItem>
                       {warehouses?.map((warehouse: any) => (
                         <SelectItem key={warehouse.id} value={warehouse.id.toString()}>
                           {warehouse.name}
@@ -244,7 +244,7 @@ const Reports: React.FC = () => {
                       <SelectValue placeholder="-- الكل --" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- الكل --</SelectItem>
+                      <SelectItem value="all">-- الكل --</SelectItem>
                       {warehouses?.map((warehouse: any) => (
                         <SelectItem key={warehouse.id} value={warehouse.id.toString()}>
                           {warehouse.name}
@@ -368,7 +368,7 @@ const Reports: React.FC = () => {
                       <SelectValue placeholder="-- الكل --" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- الكل --</SelectItem>
+                      <SelectItem value="all">-- الكل --</SelectItem>
                       {clients?.map((client: any) => (
                         <SelectItem key={client.id} value={client.id.toString()}>
                           {client.name}

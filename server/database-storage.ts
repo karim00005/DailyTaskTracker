@@ -111,19 +111,19 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(products).where(eq(products.id, id));
     return result.count > 0;
   }
-
+  
   async updateProductStock(id: number, quantity: number): Promise<Product | undefined> {
     const product = await this.getProduct(id);
     if (!product) return undefined;
-
-    const currentQuantity = parseFloat(product.stockQuantity.toString());
-    const updatedQuantity = currentQuantity + quantity;
-
+    
+    const currentStock = parseFloat(product.stockQuantity.toString());
+    const newStock = currentStock + quantity;
+    
     const result = await db.update(products)
-      .set({ stockQuantity: updatedQuantity.toString() })
+      .set({ stockQuantity: newStock.toString() })
       .where(eq(products.id, id))
       .returning();
-
+      
     return result[0];
   }
 
@@ -200,19 +200,89 @@ export class DatabaseStorage implements IStorage {
 
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
     const result = await db.insert(invoices).values(invoice).returning();
+    
+    // Update client balance for the invoice
+    const client = await this.getClient(invoice.clientId);
+    if (client) {
+      const balance = parseFloat(client.balance.toString());
+      const invoiceAmount = parseFloat(invoice.balance.toString());
+      
+      let newBalance = balance;
+      // For sales invoices, add to client's balance
+      if (invoice.invoiceType === "بيع") {
+        newBalance += invoiceAmount;
+      } 
+      // For purchase invoices, subtract from client's balance
+      else if (invoice.invoiceType === "شراء") {
+        newBalance -= invoiceAmount;
+      }
+      
+      await this.updateClient(client.id, { balance: newBalance.toString() });
+    }
+    
     return result[0];
   }
 
   async updateInvoice(id: number, invoiceData: Partial<Invoice>): Promise<Invoice | undefined> {
+    const oldInvoice = await this.getInvoice(id);
+    if (!oldInvoice) return undefined;
+    
     const result = await db.update(invoices)
       .set(invoiceData)
       .where(eq(invoices.id, id))
       .returning();
     
+    // If the balance has changed, update client balance
+    if (invoiceData.balance && invoiceData.balance !== oldInvoice.balance) {
+      const client = await this.getClient(oldInvoice.clientId);
+      if (client) {
+        const clientBalance = parseFloat(client.balance.toString());
+        
+        // Reverse old invoice effect
+        let newBalance = clientBalance;
+        if (oldInvoice.invoiceType === "بيع") {
+          newBalance -= parseFloat(oldInvoice.balance.toString());
+        } else if (oldInvoice.invoiceType === "شراء") {
+          newBalance += parseFloat(oldInvoice.balance.toString());
+        }
+        
+        // Apply new invoice effect
+        const updatedInvoice = result[0];
+        if (updatedInvoice.invoiceType === "بيع") {
+          newBalance += parseFloat(updatedInvoice.balance.toString());
+        } else if (updatedInvoice.invoiceType === "شراء") {
+          newBalance -= parseFloat(updatedInvoice.balance.toString());
+        }
+        
+        await this.updateClient(client.id, { balance: newBalance.toString() });
+      }
+    }
+    
     return result[0];
   }
 
   async deleteInvoice(id: number): Promise<boolean> {
+    // Get invoice before deletion
+    const invoice = await this.getInvoice(id);
+    if (!invoice) return false;
+    
+    // Update client balance before deletion
+    const client = await this.getClient(invoice.clientId);
+    if (client) {
+      const balance = parseFloat(client.balance.toString());
+      const invoiceAmount = parseFloat(invoice.balance.toString());
+      
+      let newBalance = balance;
+      // Reverse invoice effect
+      if (invoice.invoiceType === "بيع") {
+        newBalance -= invoiceAmount;
+      } else if (invoice.invoiceType === "شراء") {
+        newBalance += invoiceAmount;
+      }
+      
+      await this.updateClient(client.id, { balance: newBalance.toString() });
+    }
+    
     // First delete related invoice items
     await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
     
@@ -233,13 +303,62 @@ export class DatabaseStorage implements IStorage {
   async getInvoiceItems(invoiceId: number): Promise<InvoiceItem[]> {
     return await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
   }
+  
+  async getInvoiceItem(id: number): Promise<InvoiceItem | undefined> {
+    const result = await db.select().from(invoiceItems).where(eq(invoiceItems.id, id));
+    return result[0];
+  }
 
   async createInvoiceItem(invoiceItem: InsertInvoiceItem): Promise<InvoiceItem> {
     const result = await db.insert(invoiceItems).values(invoiceItem).returning();
+    
+    // Update product stock
+    const product = await this.getProduct(invoiceItem.productId);
+    const invoice = await this.getInvoice(invoiceItem.invoiceId);
+    
+    if (product && invoice) {
+      const quantity = parseFloat(invoiceItem.quantity.toString());
+      
+      // Decrease stock for sales, increase for purchases
+      let stockChange = 0;
+      if (invoice.invoiceType === "بيع" || invoice.invoiceType === "مرتجع شراء") {
+        stockChange = -quantity;
+      } else if (invoice.invoiceType === "شراء" || invoice.invoiceType === "مرتجع بيع") {
+        stockChange = quantity;
+      }
+      
+      await this.updateProductStock(product.id, stockChange);
+    }
+    
     return result[0];
   }
 
   async updateInvoiceItem(id: number, invoiceItemData: Partial<InvoiceItem>): Promise<InvoiceItem | undefined> {
+    const oldInvoiceItem = await this.getInvoiceItem(id);
+    if (!oldInvoiceItem) return undefined;
+    
+    // Handle stock changes if quantity changed
+    if (invoiceItemData.quantity && invoiceItemData.quantity !== oldInvoiceItem.quantity) {
+      const product = await this.getProduct(oldInvoiceItem.productId);
+      const invoice = await this.getInvoice(oldInvoiceItem.invoiceId);
+      
+      if (product && invoice) {
+        const oldQuantity = parseFloat(oldInvoiceItem.quantity.toString());
+        const newQuantity = parseFloat(invoiceItemData.quantity.toString());
+        const quantityDiff = newQuantity - oldQuantity;
+        
+        // Adjust stock based on invoice type
+        let stockChange = 0;
+        if (invoice.invoiceType === "بيع" || invoice.invoiceType === "مرتجع شراء") {
+          stockChange = -quantityDiff;
+        } else if (invoice.invoiceType === "شراء" || invoice.invoiceType === "مرتجع بيع") {
+          stockChange = quantityDiff;
+        }
+        
+        await this.updateProductStock(product.id, stockChange);
+      }
+    }
+    
     const result = await db.update(invoiceItems)
       .set(invoiceItemData)
       .where(eq(invoiceItems.id, id))
@@ -249,6 +368,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteInvoiceItem(id: number): Promise<boolean> {
+    // Get invoice item before deletion
+    const invoiceItem = await this.getInvoiceItem(id);
+    if (!invoiceItem) return false;
+    
+    // Reverse stock changes
+    const product = await this.getProduct(invoiceItem.productId);
+    const invoice = await this.getInvoice(invoiceItem.invoiceId);
+    
+    if (product && invoice) {
+      const quantity = parseFloat(invoiceItem.quantity.toString());
+      
+      // Add back to stock for sales, remove for purchases
+      let stockChange = 0;
+      if (invoice.invoiceType === "بيع" || invoice.invoiceType === "مرتجع شراء") {
+        stockChange = quantity;
+      } else if (invoice.invoiceType === "شراء" || invoice.invoiceType === "مرتجع بيع") {
+        stockChange = -quantity;
+      }
+      
+      await this.updateProductStock(product.id, stockChange);
+    }
+    
     const result = await db.delete(invoiceItems).where(eq(invoiceItems.id, id));
     return result.count > 0;
   }
@@ -270,19 +411,88 @@ export class DatabaseStorage implements IStorage {
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
     const result = await db.insert(transactions).values(transaction).returning();
+    
+    // Update client balance
+    const client = await this.getClient(transaction.clientId);
+    if (client) {
+      const amount = parseFloat(transaction.amount.toString());
+      const balance = parseFloat(client.balance.toString());
+      
+      let newBalance = balance;
+      if (transaction.transactionType === "قبض") {
+        newBalance -= amount;
+      } else if (transaction.transactionType === "صرف") {
+        newBalance += amount;
+      }
+      
+      await this.updateClient(client.id, { balance: newBalance.toString() });
+    }
+    
     return result[0];
   }
 
   async updateTransaction(id: number, transactionData: Partial<Transaction>): Promise<Transaction | undefined> {
+    const oldTransaction = await this.getTransaction(id);
+    if (!oldTransaction) return undefined;
+    
     const result = await db.update(transactions)
       .set(transactionData)
       .where(eq(transactions.id, id))
       .returning();
     
+    // If the amount or transaction type has changed, update client balance
+    if (transactionData.amount || 
+        (transactionData.transactionType && transactionData.transactionType !== oldTransaction.transactionType)) {
+      
+      const client = await this.getClient(oldTransaction.clientId);
+      if (client) {
+        const balance = parseFloat(client.balance.toString());
+        let newBalance = balance;
+        
+        // Reverse old transaction effect
+        if (oldTransaction.transactionType === "قبض") {
+          newBalance += parseFloat(oldTransaction.amount.toString());
+        } else if (oldTransaction.transactionType === "صرف") {
+          newBalance -= parseFloat(oldTransaction.amount.toString());
+        }
+        
+        // Apply new transaction effect
+        const updatedTransaction = result[0];
+        if (updatedTransaction.transactionType === "قبض") {
+          newBalance -= parseFloat(updatedTransaction.amount.toString());
+        } else if (updatedTransaction.transactionType === "صرف") {
+          newBalance += parseFloat(updatedTransaction.amount.toString());
+        }
+        
+        await this.updateClient(client.id, { balance: newBalance.toString() });
+      }
+    }
+    
     return result[0];
   }
 
   async deleteTransaction(id: number): Promise<boolean> {
+    // Get transaction before deletion
+    const transaction = await this.getTransaction(id);
+    if (!transaction) return false;
+    
+    // Update client balance before deletion
+    const client = await this.getClient(transaction.clientId);
+    if (client) {
+      const amount = parseFloat(transaction.amount.toString());
+      const balance = parseFloat(client.balance.toString());
+      
+      let newBalance = balance;
+      // Reverse transaction effect
+      if (transaction.transactionType === "قبض") {
+        newBalance += amount;
+      } else if (transaction.transactionType === "صرف") {
+        newBalance -= amount;
+      }
+      
+      await this.updateClient(client.id, { balance: newBalance.toString() });
+    }
+    
     const result = await db.delete(transactions).where(eq(transactions.id, id));
     return result.count > 0;
   }
