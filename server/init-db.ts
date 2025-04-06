@@ -81,30 +81,15 @@ export async function initializeDatabase() {
         name: "محمد عبدالله حسين عبدالعظيم",
         accountType: "مدين",
         balance: 0,
-        address: "88 شارع صدقي",
-        city: "طنطا",
-        phone: null,
-        mobile: "01099998017",
-        email: null,
-        notes: null,
-        isActive: true,
-        createdAt: Date.now()
+        createdAt: Math.floor(Date.now() / 1000) // Unix timestamp in seconds
       });
 
       await db.insert(clients).values({
         name: "جلال البيه",
         accountType: "مدين",
         balance: 0,
-        address: "المعادي",
-        city: "القاهرة",
-        phone: null,
-        mobile: "01234567890",
-        email: null,
-        notes: null,
-        isActive: true,
-        createdAt: Date.now()
+        createdAt: Math.floor(Date.now() / 1000) // Unix timestamp in seconds
       });
-
     }
 
     // Check if we have any products
@@ -113,17 +98,17 @@ export async function initializeDatabase() {
     if (existingProducts.length === 0) {
       console.log("Creating sample products...");
       await db.insert(products).values({
-        code: "P001",
         name: "شركة الدلتا للسكر",
+        code: "P001",
         description: "سكر أبيض",
         unitOfMeasure: "كج",
         category: "مواد غذائية",
-        costPrice: "25000",
-        sellPrice1: "29200",
-        sellPrice2: "28000",
-        sellPrice3: "27000",
-        stockQuantity: "500",
-        reorderLevel: "50",
+        costPrice: 25000,
+        sellPrice1: 29200,
+        sellPrice2: 28000,
+        sellPrice3: 27000,
+        stockQuantity: 500,
+        reorderLevel: 50,
         isActive: true
       });
     }
