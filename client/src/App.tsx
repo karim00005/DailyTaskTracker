@@ -13,6 +13,7 @@ import ClientDetails from "@/pages/accounts/client-details";
 import Inventory from "@/pages/inventory";
 import Receipt from "@/pages/treasury/receipt";
 import Payment from "@/pages/treasury/payment";
+import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import Backup from "./pages/settings/backup";
 import Import from "./pages/settings/import";
@@ -33,6 +34,8 @@ function Router() {
       setCurrentModule('inventory');
     } else if (path.includes('/treasury')) {
       setCurrentModule('treasury');
+    } else if (path.includes('/reports')) {
+      setCurrentModule('reports');
     } else if (path.includes('/settings')) {
       setCurrentModule('settings');
     } else {
@@ -52,6 +55,7 @@ function Router() {
         <Route path="/inventory" component={Inventory} />
         <Route path="/treasury/receipt" component={Receipt} />
         <Route path="/treasury/payment" component={Payment} />
+        <Route path="/reports" component={Reports} />
         <Route path="/settings" component={Settings} />
         <Route path="/settings/backup" component={Backup} />
         <Route path="/settings/import" component={Import} />

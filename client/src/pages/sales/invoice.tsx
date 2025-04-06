@@ -315,7 +315,6 @@ const SalesInvoice: React.FC = () => {
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   className="bg-green-100 border-green-300"
-                  readOnly
                 />
               </div>
               <div className="col-span-1">
@@ -360,7 +359,14 @@ const SalesInvoice: React.FC = () => {
                   <Input
                     id="client"
                     value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
+                    onChange={(e) => {
+                      setClientName(e.target.value);
+                      // Auto-select client ID when name matches exactly
+                      const client = clients?.find((c: any) => c.name === e.target.value);
+                      if (client) {
+                        setClientId(client.id.toString());
+                      }
+                    }}
                     placeholder="اختر العميل"
                     list="clients-list"
                   />
@@ -378,6 +384,10 @@ const SalesInvoice: React.FC = () => {
                       const client = clients?.find((c: any) => c.name === clientName);
                       if (client) {
                         setClientId(client.id.toString());
+                        toast({
+                          title: "تم اختيار الحساب",
+                          description: `تم اختيار ${client.name} بنجاح`,
+                        });
                       } else {
                         toast({
                           title: "تنبيه",
