@@ -253,28 +253,33 @@ export class DatabaseStorage implements IStorage {
     console.log("DEBUG: invoiceData", invoiceData); // log for debugging
     
     const result = await db.insert(invoices).values(invoiceData).returning();
-    console.log("DEBUG: createInvoice result", result);  // Debug log
-    
-    // Update client balance for the invoice
-    const client = await this.getClient(invoice.clientId);
-    if (client) {
-      const balance = parseFloat(client.balance.toString());
-      const invoiceAmount = parseFloat(invoice.balance.toString());
-      
-      let newBalance = balance;
-      // For sales invoices, add to client's balance
-      if (invoice.invoiceType === "بيع") {
-        newBalance += invoiceAmount;
-      } 
-      // For purchase invoices, subtract from client's balance
-      else if (invoice.invoiceType === "شراء") {
-        newBalance -= invoiceAmount;
+    const newInvoice = result[0];
+
+    // Update client balance directly using a database query
+    if (invoice.clientId) {
+      const client = await this.getClient(invoice.clientId);
+      if (!client) {
+        console.warn(`Client with id ${invoice.clientId} not found`);
+      } else {
+        const invoiceAmount = parseFloat(invoice.balance.toString());
+        let newBalance: number;
+
+        if (invoice.invoiceType === "بيع") {
+          newBalance = parseFloat(client.balance.toString()) + invoiceAmount;
+        } else {
+          newBalance = parseFloat(client.balance.toString()) - invoiceAmount;
+        }
+
+        await db
+          .update(clients)
+          .set({ balance: newBalance })
+          .where(eq(clients.id, invoice.clientId));
+
+        console.log(`Client ${invoice.clientId} balance updated to ${newBalance} after invoice creation`);
       }
-      
-      await this.updateClient(client.id, { balance: newBalance.toString() });
     }
-    
-    return result[0];
+
+    return newInvoice;
   }
 
   async updateInvoice(id: number, invoiceData: Partial<Invoice>): Promise<Invoice | undefined> {
@@ -285,34 +290,39 @@ export class DatabaseStorage implements IStorage {
       .set(invoiceData)
       .where(eq(invoices.id, id))
       .returning();
-    
-    // If the balance has changed, update client balance
-    if (invoiceData.balance && invoiceData.balance !== oldInvoice.balance) {
-      const client = await this.getClient(oldInvoice.clientId);
-      if (client) {
-        const clientBalance = parseFloat(client.balance.toString());
-        
-        // Reverse old invoice effect
-        let newBalance = clientBalance;
-        if (oldInvoice.invoiceType === "بيع") {
-          newBalance -= parseFloat(oldInvoice.balance.toString());
-        } else if (oldInvoice.invoiceType === "شراء") {
-          newBalance += parseFloat(oldInvoice.balance.toString());
+    const updatedInvoice = result[0];
+
+    // Update client balance directly using a database query
+    if (invoiceData.clientId) {
+      const client = await this.getClient(invoiceData.clientId);
+      if (!client) {
+        console.warn(`Client with id ${invoiceData.clientId} not found`);
+      } else {
+        const oldInvoice = await this.getInvoice(id);
+        if (!oldInvoice) {
+          console.warn(`Old invoice with id ${id} not found`);
+        } else {
+          let newBalance: number;
+          const oldInvoiceAmount = parseFloat(oldInvoice.balance.toString());
+          const newInvoiceAmount = parseFloat(invoiceData.balance?.toString() || oldInvoice.balance.toString());
+
+          if (oldInvoice.invoiceType === "بيع") {
+            newBalance = parseFloat(client.balance.toString()) - oldInvoiceAmount + newInvoiceAmount;
+          } else {
+            newBalance = parseFloat(client.balance.toString()) + oldInvoiceAmount - newInvoiceAmount;
+          }
+
+          await db
+            .update(clients)
+            .set({ balance: newBalance })
+            .where(eq(clients.id, invoiceData.clientId));
+
+          console.log(`Client ${invoiceData.clientId} balance updated to ${newBalance} after invoice update`);
         }
-        
-        // Apply new invoice effect
-        const updatedInvoice = result[0];
-        if (updatedInvoice.invoiceType === "بيع") {
-          newBalance += parseFloat(updatedInvoice.balance.toString());
-        } else if (updatedInvoice.invoiceType === "شراء") {
-          newBalance -= parseFloat(updatedInvoice.balance.toString());
-        }
-        
-        await this.updateClient(client.id, { balance: newBalance.toString() });
       }
     }
-    
-    return result[0];
+
+    return updatedInvoice;
   }
 
   async deleteInvoice(id: number): Promise<boolean> {
@@ -320,21 +330,28 @@ export class DatabaseStorage implements IStorage {
     const invoice = await this.getInvoice(id);
     if (!invoice) return false;
     
-    // Update client balance before deletion
-    const client = await this.getClient(invoice.clientId);
-    if (client) {
-      const balance = parseFloat(client.balance.toString());
-      const invoiceAmount = parseFloat(invoice.balance.toString());
-      
-      let newBalance = balance;
-      // Reverse invoice effect
-      if (invoice.invoiceType === "بيع") {
-        newBalance -= invoiceAmount;
-      } else if (invoice.invoiceType === "شراء") {
-        newBalance += invoiceAmount;
+    // Update client balance directly using a database query
+    if (invoice.clientId) {
+      const client = await this.getClient(invoice.clientId);
+      if (!client) {
+        console.warn(`Client with id ${invoice.clientId} not found`);
+      } else {
+        let newBalance: number;
+        const invoiceAmount = parseFloat(invoice.balance.toString());
+
+        if (invoice.invoiceType === "بيع") {
+          newBalance = parseFloat(client.balance.toString()) - invoiceAmount;
+        } else {
+          newBalance = parseFloat(client.balance.toString()) + invoiceAmount;
+        }
+
+        await db
+          .update(clients)
+          .set({ balance: newBalance })
+          .where(eq(clients.id, invoice.clientId));
+
+        console.log(`Client ${invoice.clientId} balance updated to ${newBalance} after invoice deletion`);
       }
-      
-      await this.updateClient(client.id, { balance: newBalance.toString() });
     }
     
     // First delete related invoice items

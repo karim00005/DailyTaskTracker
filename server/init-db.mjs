@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from './db.js';
 import { 
   users, clients, products, warehouses, settings
 } from '@shared/schema';
@@ -14,7 +14,7 @@ const checkClientsSchema = async () => {
   }
 };
 
-export const initializeDatabase = async () => {
+export async function initializeDatabase() {
   console.log("Initializing database with default data...");
   
   try {

@@ -4,7 +4,8 @@ import path from 'path';
 import { Request, Response } from 'express';
 import { IncomingForm } from 'formidable';
 import fs from 'fs';
-import XLSX from 'xlsx';
+// REMINDER: Ensure the xlsx package is installed using "npm install xlsx"
+import * as XLSX from "xlsx";
 import { users, clients, products, warehouses, invoices, invoiceItems, transactions, settings } from '@shared/schema';
 
 // Get current file's directory in ES modules
