@@ -8,9 +8,12 @@ import Dashboard from "@/pages/dashboard";
 import Sales from "@/pages/sales";
 import SalesInvoice from "@/pages/sales/invoice";
 import SalesInvoiceDetails from "@/pages/sales/invoice-details";
+import SalesBatch from "@/pages/sales/batch";
 import Accounts from "@/pages/accounts";
 import ClientDetails from "@/pages/accounts/client-details";
+import ClientBatch from "@/pages/accounts/batch";
 import Inventory from "@/pages/inventory";
+import ProductBatch from "@/pages/inventory/batch";
 import Receipt from "@/pages/treasury/receipt";
 import Payment from "@/pages/treasury/payment";
 import Reports from "@/pages/reports";
@@ -50,9 +53,12 @@ function Router() {
         <Route path="/sales" component={Sales} />
         <Route path="/sales/invoice" component={SalesInvoice} />
         <Route path="/sales/invoice/:id" component={SalesInvoiceDetails} />
+        <Route path="/sales/batch" component={SalesBatch} />
         <Route path="/accounts" component={Accounts} />
         <Route path="/accounts/client/:id" component={ClientDetails} />
+        <Route path="/accounts/batch" component={ClientBatch} />
         <Route path="/inventory" component={Inventory} />
+        <Route path="/inventory/batch" component={ProductBatch} />
         <Route path="/treasury/receipt" component={Receipt} />
         <Route path="/treasury/payment" component={Payment} />
         <Route path="/reports" component={Reports} />

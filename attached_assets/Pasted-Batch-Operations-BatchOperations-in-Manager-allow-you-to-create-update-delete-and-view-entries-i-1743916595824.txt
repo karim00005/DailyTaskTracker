@@ -1,0 +1,98 @@
+Batch Operations
+BatchOperations in Manager allow you to create, update, delete, and view entries in bulk. This functionality is available across many screens in Manager, improving efficiency when working with large amounts of data.
+
+To access Batch Operations, click on the BatchOperations button located in the bottom-right corner of the relevant screen.
+
+Batch Operations
+Batch Create
+The BatchCreate function enables you to create multiple entries at once, which is especially useful when adding a large number of entries efficiently.
+
+Steps to use BatchCreate:
+
+Access BatchCreate:
+
+Click the BatchOperations button.
+Select BatchCreate.
+Copy Template Columns:
+
+Click the Copy to clipboard button to copy the template columns.
+Prepare Data in Spreadsheet:
+
+Paste the copied columns into your spreadsheet program.
+Fill in your data accordingly.
+Paste Data Back into Manager:
+
+Copy the data from your spreadsheet.
+Paste it into the text field provided in Manager.
+Complete the Process:
+
+Click the Next button.
+Review the entries that Manager will import.
+Click the BatchCreate button to finalize the creation.
+Tip: The biggest challenge during the batch creation process is preparing your data correctly in the spreadsheet. If unsure, create a few sample entries within Manager, then use the BatchUpdate function to see how these entries are formatted in the spreadsheet.
+
+Batch Update
+The BatchUpdate function allows you to modify existing entries in bulk, saving time and effort.
+
+Steps to use BatchUpdate:
+
+Access BatchUpdate:
+
+Click the BatchOperations button.
+Select BatchUpdate.
+Copy Existing Data:
+
+Click the Copy to clipboard button to copy the data of the entries you are updating.
+Edit Data in Spreadsheet:
+
+Paste the data into your spreadsheet program.
+Make the necessary changes to your data.
+Paste Updated Data Back into Manager:
+
+Copy the updated data from your spreadsheet.
+Paste it back into the text field in Manager.
+Complete the Process:
+
+Click the Next button.
+Review the changes that Manager will apply.
+Click the BatchUpdate button to finalize the updates.
+Batch Recode
+The BatchRecode function is used to update a single field across multiple entries at once. This feature is ideal for making the same change to many records quickly.
+
+Steps to use BatchRecode:
+
+Access BatchRecode:
+
+Click the BatchOperations button.
+Select BatchRecode.
+Select Field and Apply Changes:
+
+Choose the field you wish to update.
+Apply the new value to the selected entries.
+Batch Delete
+The BatchDelete function allows you to delete multiple entries at once, which is beneficial when you need to remove a large number of entries quickly.
+
+Steps to use BatchDelete:
+
+Access BatchDelete:
+
+Click the BatchOperations button.
+Select BatchDelete.
+Select Entries to Delete:
+
+Choose the entries you wish to delete.
+Confirm Deletion:
+
+Confirm the deletion to remove the entries.
+Batch View
+The BatchView function is useful when you need to review or print multiple entries simultaneously.
+
+Steps to use BatchView:
+
+Access BatchView:
+
+Click the BatchOperations button.
+Select BatchView.
+Review Entries:
+
+View the entries displayed.

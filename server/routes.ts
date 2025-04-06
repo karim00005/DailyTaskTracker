@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { createBackup, restoreBackup } from "./backup";
 import { importExcelData } from "./import";
+import { NextFunction } from "express";
 
 // Helper function to handle validation
 function validate<T extends z.ZodType>(
@@ -600,6 +601,373 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Excel import route
   app.post("/api/import/excel", importExcelData);
+  
+  // Batch Operations routes
+  // Clients batch operations
+  app.post("/api/batch/clients/create", async (req: Request, res: Response) => {
+    try {
+      const clientsData = req.body;
+      if (!Array.isArray(clientsData) || clientsData.length === 0) {
+        return res.status(400).json({ message: "يجب توفير مصفوفة من بيانات العملاء" });
+      }
+      
+      const createdClients = [];
+      for (const clientData of clientsData) {
+        const validData = validate(insertClientSchema, clientData);
+        if (validData) {
+          const client = await storage.createClient(validData);
+          createdClients.push(client);
+        }
+      }
+      
+      return res.status(201).json({ 
+        count: createdClients.length,
+        clients: createdClients
+      });
+    } catch (error) {
+      console.error("Error in batch client creation:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء إنشاء العملاء" });
+    }
+  });
+  
+  app.post("/api/batch/clients/update", async (req: Request, res: Response) => {
+    try {
+      const clientsData = req.body;
+      if (!Array.isArray(clientsData) || clientsData.length === 0) {
+        return res.status(400).json({ message: "يجب توفير مصفوفة من بيانات العملاء" });
+      }
+      
+      const updatedClients = [];
+      for (const clientData of clientsData) {
+        if (!clientData.id) {
+          continue;
+        }
+        
+        const clientId = parseInt(clientData.id.toString());
+        const client = await storage.getClient(clientId);
+        if (client) {
+          const updatedClient = await storage.updateClient(clientId, clientData);
+          if (updatedClient) {
+            updatedClients.push(updatedClient);
+          }
+        }
+      }
+      
+      return res.json({ 
+        count: updatedClients.length,
+        clients: updatedClients
+      });
+    } catch (error) {
+      console.error("Error in batch client update:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء تحديث العملاء" });
+    }
+  });
+  
+  app.post("/api/batch/clients/delete", async (req: Request, res: Response) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "يجب توفير مصفوفة من معرفات العملاء" });
+      }
+      
+      const results = [];
+      for (const id of ids) {
+        const clientId = parseInt(id.toString());
+        const success = await storage.deleteClient(clientId);
+        results.push({ id, success });
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      return res.json({ 
+        count: successCount,
+        results
+      });
+    } catch (error) {
+      console.error("Error in batch client deletion:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء حذف العملاء" });
+    }
+  });
+  
+  app.post("/api/batch/clients/recode", async (req: Request, res: Response) => {
+    try {
+      const { fieldId, newValue, ids } = req.body;
+      if (!fieldId || !ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "بيانات غير صالحة" });
+      }
+      
+      const results = [];
+      for (const id of ids) {
+        const clientId = parseInt(id.toString());
+        const client = await storage.getClient(clientId);
+        
+        if (client) {
+          const update = { [fieldId]: newValue };
+          const updatedClient = await storage.updateClient(clientId, update);
+          results.push({ 
+            id: clientId, 
+            success: !!updatedClient,
+            oldValue: client[fieldId as keyof typeof client],
+            newValue
+          });
+        } else {
+          results.push({ id: clientId, success: false });
+        }
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      return res.json({ 
+        count: successCount,
+        results
+      });
+    } catch (error) {
+      console.error("Error in batch client field update:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء تحديث بيانات العملاء" });
+    }
+  });
+  
+  // Products batch operations
+  app.post("/api/batch/products/create", async (req: Request, res: Response) => {
+    try {
+      const productsData = req.body;
+      if (!Array.isArray(productsData) || productsData.length === 0) {
+        return res.status(400).json({ message: "يجب توفير مصفوفة من بيانات المنتجات" });
+      }
+      
+      const createdProducts = [];
+      for (const productData of productsData) {
+        const validData = validate(insertProductSchema, productData);
+        if (validData) {
+          const product = await storage.createProduct(validData);
+          createdProducts.push(product);
+        }
+      }
+      
+      return res.status(201).json({ 
+        count: createdProducts.length,
+        products: createdProducts
+      });
+    } catch (error) {
+      console.error("Error in batch product creation:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء إنشاء المنتجات" });
+    }
+  });
+  
+  app.post("/api/batch/products/update", async (req: Request, res: Response) => {
+    try {
+      const productsData = req.body;
+      if (!Array.isArray(productsData) || productsData.length === 0) {
+        return res.status(400).json({ message: "يجب توفير مصفوفة من بيانات المنتجات" });
+      }
+      
+      const updatedProducts = [];
+      for (const productData of productsData) {
+        if (!productData.id) {
+          continue;
+        }
+        
+        const productId = parseInt(productData.id.toString());
+        const product = await storage.getProduct(productId);
+        if (product) {
+          const updatedProduct = await storage.updateProduct(productId, productData);
+          if (updatedProduct) {
+            updatedProducts.push(updatedProduct);
+          }
+        }
+      }
+      
+      return res.json({ 
+        count: updatedProducts.length,
+        products: updatedProducts
+      });
+    } catch (error) {
+      console.error("Error in batch product update:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء تحديث المنتجات" });
+    }
+  });
+  
+  app.post("/api/batch/products/delete", async (req: Request, res: Response) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "يجب توفير مصفوفة من معرفات المنتجات" });
+      }
+      
+      const results = [];
+      for (const id of ids) {
+        const productId = parseInt(id.toString());
+        const success = await storage.deleteProduct(productId);
+        results.push({ id, success });
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      return res.json({ 
+        count: successCount,
+        results
+      });
+    } catch (error) {
+      console.error("Error in batch product deletion:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء حذف المنتجات" });
+    }
+  });
+  
+  app.post("/api/batch/products/recode", async (req: Request, res: Response) => {
+    try {
+      const { fieldId, newValue, ids } = req.body;
+      if (!fieldId || !ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "بيانات غير صالحة" });
+      }
+      
+      const results = [];
+      for (const id of ids) {
+        const productId = parseInt(id.toString());
+        const product = await storage.getProduct(productId);
+        
+        if (product) {
+          const update = { [fieldId]: newValue };
+          const updatedProduct = await storage.updateProduct(productId, update);
+          results.push({ 
+            id: productId, 
+            success: !!updatedProduct,
+            oldValue: product[fieldId as keyof typeof product],
+            newValue
+          });
+        } else {
+          results.push({ id: productId, success: false });
+        }
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      return res.json({ 
+        count: successCount,
+        results
+      });
+    } catch (error) {
+      console.error("Error in batch product field update:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء تحديث بيانات المنتجات" });
+    }
+  });
+  
+  // Invoices batch operations
+  app.post("/api/batch/invoices/create", async (req: Request, res: Response) => {
+    try {
+      const invoicesData = req.body;
+      if (!Array.isArray(invoicesData) || invoicesData.length === 0) {
+        return res.status(400).json({ message: "يجب توفير مصفوفة من بيانات الفواتير" });
+      }
+      
+      const createdInvoices = [];
+      for (const invoiceData of invoicesData) {
+        const validData = validate(insertInvoiceSchema, invoiceData);
+        if (validData) {
+          const invoice = await storage.createInvoice(validData);
+          createdInvoices.push(invoice);
+        }
+      }
+      
+      return res.status(201).json({ 
+        count: createdInvoices.length,
+        invoices: createdInvoices
+      });
+    } catch (error) {
+      console.error("Error in batch invoice creation:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء إنشاء الفواتير" });
+    }
+  });
+  
+  app.post("/api/batch/invoices/update", async (req: Request, res: Response) => {
+    try {
+      const invoicesData = req.body;
+      if (!Array.isArray(invoicesData) || invoicesData.length === 0) {
+        return res.status(400).json({ message: "يجب توفير مصفوفة من بيانات الفواتير" });
+      }
+      
+      const updatedInvoices = [];
+      for (const invoiceData of invoicesData) {
+        if (!invoiceData.id) {
+          continue;
+        }
+        
+        const invoiceId = parseInt(invoiceData.id.toString());
+        const invoice = await storage.getInvoice(invoiceId);
+        if (invoice) {
+          const updatedInvoice = await storage.updateInvoice(invoiceId, invoiceData);
+          if (updatedInvoice) {
+            updatedInvoices.push(updatedInvoice);
+          }
+        }
+      }
+      
+      return res.json({ 
+        count: updatedInvoices.length,
+        invoices: updatedInvoices
+      });
+    } catch (error) {
+      console.error("Error in batch invoice update:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء تحديث الفواتير" });
+    }
+  });
+  
+  app.post("/api/batch/invoices/delete", async (req: Request, res: Response) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "يجب توفير مصفوفة من معرفات الفواتير" });
+      }
+      
+      const results = [];
+      for (const id of ids) {
+        const invoiceId = parseInt(id.toString());
+        const success = await storage.deleteInvoice(invoiceId);
+        results.push({ id, success });
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      return res.json({ 
+        count: successCount,
+        results
+      });
+    } catch (error) {
+      console.error("Error in batch invoice deletion:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء حذف الفواتير" });
+    }
+  });
+  
+  app.post("/api/batch/invoices/recode", async (req: Request, res: Response) => {
+    try {
+      const { fieldId, newValue, ids } = req.body;
+      if (!fieldId || !ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "بيانات غير صالحة" });
+      }
+      
+      const results = [];
+      for (const id of ids) {
+        const invoiceId = parseInt(id.toString());
+        const invoice = await storage.getInvoice(invoiceId);
+        
+        if (invoice) {
+          const update = { [fieldId]: newValue };
+          const updatedInvoice = await storage.updateInvoice(invoiceId, update);
+          results.push({ 
+            id: invoiceId, 
+            success: !!updatedInvoice,
+            oldValue: invoice[fieldId as keyof typeof invoice],
+            newValue
+          });
+        } else {
+          results.push({ id: invoiceId, success: false });
+        }
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      return res.json({ 
+        count: successCount,
+        results
+      });
+    } catch (error) {
+      console.error("Error in batch invoice field update:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء تحديث بيانات الفواتير" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
