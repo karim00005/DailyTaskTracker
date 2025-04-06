@@ -1,4 +1,5 @@
-CREATE TABLE `users` (
+    CREATE TABLE IF NOT EXISTS `users` (
+
   `id` integer PRIMARY KEY NOT NULL,
   `username` text NOT NULL,
   `password` text NOT NULL,
@@ -7,4 +8,4 @@ CREATE TABLE `users` (
   `is_active` integer DEFAULT true NOT NULL
 );
 
-CREATE UNIQUE INDEX `users_username_unique` ON `users` (`username`);
+CREATE UNIQUE INDEX IF NOT EXISTS `users_username_unique` ON `users` (`username`);

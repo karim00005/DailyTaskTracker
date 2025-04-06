@@ -1,7 +1,8 @@
-CREATE TABLE `clients` (
+CREATE TABLE IF NOT EXISTS `clients` (
+
   `id` integer PRIMARY KEY NOT NULL,
   `name` text NOT NULL,
-  `balance` real DEFAULT 0 NOT NULL,
+  `balance` real DEFAULT 0 ,
   `contact_person` text,
   `email` text,
   `phone` text,

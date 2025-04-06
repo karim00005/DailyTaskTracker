@@ -1,49 +1,63 @@
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { db } from "./db";
-import { readFileSync, readdirSync } from 'fs';
-import { dirname, join } from 'path';
+import { db } from './db';
+import { sql } from 'drizzle-orm';
+import fs from 'fs';
+import path from 'path';
 import { fileURLToPath } from 'url';
 
-const currentDir = dirname(fileURLToPath(import.meta.url));
+// Get the current directory path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export const migrateDatabase = async () => {
-  console.log("Running migrations...");
+async function runMigrations() {
+  console.log('Running migrations...');
 
   try {
-    // Use path.join with the current directory
-    const migrationsDir = join(currentDir, '../drizzle/migrations');
-    const migrationFiles = readdirSync(migrationsDir)
-      .filter(f => f.endsWith('.sql'))
+    // Create migrations directory if it doesn't exist
+    const migrationsDir = path.join(__dirname, '../migrations');
+    if (!fs.existsSync(migrationsDir)) {
+      fs.mkdirSync(migrationsDir);
+      console.log('Created migrations directory');
+    }
+
+    // Create migrations tracking table
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS drizzle_migrations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    const migrationFiles = fs.readdirSync(migrationsDir)
+      .filter(file => file.endsWith('.sql'))
       .sort();
+
+    if (migrationFiles.length === 0) {
+      console.log('No migration files found');
+      return;
+    }
 
     console.log(`Found ${migrationFiles.length} migration files`);
 
     for (const file of migrationFiles) {
-      const sql = readFileSync(join(migrationsDir, file), 'utf8');
-      console.log(`Executing migration ${file}...`);
+      console.log(`Executing ${file}...`);
+      const content = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      const statements = content.split(';').filter(s => s.trim());
 
-      const statements = sql
-        .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-
-      for (const statement of statements) {
-        try {
-          await db.run(statement);
-          console.log(`Executed statement from ${file}`);
-        } catch (error: any) {
-          if (!error.message?.includes('already exists')) {
-            console.error(`Error executing migration ${file}:`, error);
-            throw error;
-          }
-          console.log(`Table in ${file} already exists, skipping...`);
-        }
+      for (const stmt of statements) {
+        if (stmt) await db.run(sql.raw(stmt));
       }
+
+      await db.run(sql`
+        INSERT INTO drizzle_migrations (name) VALUES (${file})
+      `);
     }
 
-    console.log("Migrations completed successfully");
+    console.log('Migrations completed successfully');
   } catch (error) {
-    console.error("Error running migrations:", error);
-    throw error;
+    console.error('Migration failed:', error);
+    process.exit(1);
   }
-};
+}
+
+await runMigrations();

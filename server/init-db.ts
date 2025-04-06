@@ -1,51 +1,92 @@
 import { db } from './db';
-import { 
-  users, clients, products, warehouses, settings
-} from '@shared/schema';
-import { eq, sql } from 'drizzle-orm'; // Importing eq function and sql
+import { users, clients, products, warehouses, settings } from '@shared/schema';
+import { sql } from 'drizzle-orm';
 
-const checkAndFixClientsSchema = async () => {
+/**
+ * Checks if a table exists in the database
+ */
+async function tableExists(tableName: string): Promise<boolean> {
   try {
-    // Try to query the balance column
-    await db.select().from(clients).where(eq(clients.balance, 0));
-    console.log("The 'balance' column exists in the clients table.");
-    return true;
+    const result = await db.get<{ name: string }>(
+      sql`SELECT name FROM sqlite_master WHERE type='table' AND name=${tableName}`
+    );
+    return !!result;
   } catch (error) {
-    console.log("The 'balance' column does NOT exist in the clients table. Adding it...");
-    
-    // Add the column if it doesn't exist
-    await db.run(`
-      ALTER TABLE clients ADD COLUMN balance REAL DEFAULT 0;
-    `);
-    
-    return true;
+    console.error(`Error checking for table ${tableName}:`, error);
+    return false;
   }
-};
+}
 
+/**
+ * Checks if a column exists in a table
+ */
+async function columnExists(table: string, column: string): Promise<boolean> {
+  try {
+    const result = await db.get<{ cid: number }>(
+      sql`SELECT cid FROM pragma_table_info(${table}) WHERE name=${column}`
+    );
+    return !!result;
+  } catch (error) {
+    console.error(`Error checking for column ${column} in ${table}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Ensures all required database schema exists
+ */
+async function ensureDatabaseSchema() {
+  const requiredTables = [
+    { name: 'users', columns: [] },
+    { name: 'warehouses', columns: [] },
+    { name: 'settings', columns: [] },
+    { name: 'clients', columns: [{ name: 'balance', type: 'REAL DEFAULT 0' }] },
+    { name: 'products', columns: [] }
+  ];
+
+  // Verify all tables exist
+  for (const table of requiredTables) {
+    if (!await tableExists(table.name)) {
+      throw new Error(`Required table ${table.name} does not exist. Run migrations first.`);
+    }
+
+    // Verify all columns exist
+    for (const column of table.columns) {
+      if (!await columnExists(table.name, column.name)) {
+        console.log(`Adding missing column '${column.name}' to ${table.name} table...`);
+        await db.run(sql`
+          ALTER TABLE ${sql.raw(table.name)} ADD COLUMN ${sql.raw(column.name)} ${sql.raw(column.type)}
+        `);
+      }
+    }
+  }
+}
+
+/**
+ * Initializes the database with default data
+ */
 export const initializeDatabase = async () => {
   console.log("Initializing database with default data...");
   
   try {
-    // Check and fix the clients table schema
-    await checkAndFixClientsSchema();
+    // 1. Verify database schema
+    await ensureDatabaseSchema();
     
-    // Check if we have any users
+    // 2. Initialize default users
     const existingUsers = await db.select().from(users);
-    
     if (existingUsers.length === 0) {
       console.log("Creating default admin user...");
       await db.insert(users).values({
         username: "admin",
-        password: "admin123",
+        password: "admin123", // In production, use hashed passwords!
         fullName: "كريم كمال",
         role: "admin",
         isActive: true
       });
     }
 
-    // Check if we have any warehouses
+    // 3. Initialize default warehouses
     const existingWarehouses = await db.select().from(warehouses);
-    
     if (existingWarehouses.length === 0) {
       console.log("Creating default warehouse...");
       await db.insert(warehouses).values({
@@ -56,9 +97,8 @@ export const initializeDatabase = async () => {
       });
     }
 
-    // Check if we have any settings
+    // 4. Initialize default settings
     const existingSettings = await db.select().from(settings);
-    
     if (existingSettings.length === 0) {
       console.log("Creating default settings...");
       await db.insert(settings).values({
@@ -77,29 +117,27 @@ export const initializeDatabase = async () => {
       });
     }
 
-    // Check if we have any clients
+    // 5. Initialize sample clients
     const existingClients = await db.select().from(clients);
-    
     if (existingClients.length === 0) {
       console.log("Creating sample clients...");
       await db.insert(clients).values({
         name: "محمد عبدالله حسين عبدالعظيم",
         accountType: "مدين",
         balance: 0,
-        createdAt: Math.floor(Date.now() / 1000) // Unix timestamp in seconds
+        createdAt: Math.floor(Date.now() / 1000)
       });
 
       await db.insert(clients).values({
         name: "جلال البيه",
         accountType: "مدين",
         balance: 0,
-        createdAt: Math.floor(Date.now() / 1000) // Unix timestamp in seconds
+        createdAt: Math.floor(Date.now() / 1000)
       });
     }
 
-    // Check if we have any products
+    // 6. Initialize sample products
     const existingProducts = await db.select().from(products);
-    
     if (existingProducts.length === 0) {
       console.log("Creating sample products...");
       await db.insert(products).values({
@@ -121,6 +159,6 @@ export const initializeDatabase = async () => {
     console.log("Database initialization completed successfully!");
   } catch (error) {
     console.error("Error initializing database:", error);
-    throw error;
+    throw new Error(`Database initialization failed: ${error instanceof Error ? error.message : String(error)}`);
   }
-}; // Closing brace added here
+};
