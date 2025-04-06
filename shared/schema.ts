@@ -1,16 +1,16 @@
-import { pgTable, text, serial, integer, boolean, date, time, decimal, timestamp } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, real, blob } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Users table
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   fullName: text("full_name").notNull(),
   role: text("role").notNull().default("user"),
-  isActive: boolean("is_active").notNull().default(true),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -22,54 +22,92 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 // Clients table
-export const clients = pgTable("clients", {
-  id: serial("id").primaryKey(),
+export const clients = sqliteTable("clients", {
+  id: integer("id").primaryKey(),
   name: text("name").notNull(),
-  type: text("type").notNull(), // عميل, مورد, موظف, أخرى
-  accountType: text("account_type").notNull(), // دائن, مدين
-  code: text("code"),
-  taxId: text("tax_id"),
-  balance: decimal("balance", { precision: 16, scale: 2 }).notNull().default("0"),
+  contactPerson: text("contact_person"),
+  email: text("email"),
+  phone: text("phone"),
   address: text("address"),
   city: text("city"),
-  phone: text("phone"),
-  mobile: text("mobile"),
-  email: text("email"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  country: text("country"),
   notes: text("notes"),
-  isActive: boolean("is_active").notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).defaultNow(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).defaultNow(),
 });
 
-export const insertClientSchema = createInsertSchema(clients).pick({
-  name: true,
-  type: true,
-  accountType: true,
-  code: true,
-  taxId: true,
-  balance: true,
-  address: true,
-  city: true,
-  phone: true,
-  mobile: true,
-  email: true,
-  notes: true,
-  isActive: true,
+export const insertClientSchema = createInsertSchema(clients);
+
+// Projects table
+export const projects = sqliteTable("projects", {
+  id: integer("id").primaryKey(),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  startDate: integer("start_date", { mode: "timestamp" }),
+  endDate: integer("end_date", { mode: "timestamp" }),
+  status: text("status"),
+  budget: integer("budget"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).defaultNow(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).defaultNow(),
+});
+
+// Tasks table
+export const tasks = sqliteTable("tasks", {
+  id: integer("id").primaryKey(),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  startDate: integer("start_date", { mode: "timestamp" }),
+  dueDate: integer("due_date", { mode: "timestamp" }),
+  status: text("status"),
+  priority: text("priority"),
+  assignee: text("assignee"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).defaultNow(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).defaultNow(),
+});
+
+// Timesheet table
+export const timesheets = sqliteTable("timesheets", {
+  id: integer("id").primaryKey(),
+  taskId: integer("task_id")
+    .notNull()
+    .references(() => tasks.id),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  date: integer("date", { mode: "timestamp" }).notNull(),
+  startTime: integer("start_time", { mode: "timestamp" }).notNull(),
+  endTime: integer("end_time", { mode: "timestamp" }).notNull(),
+  duration: integer("duration").notNull(),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).defaultNow(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).defaultNow(),
 });
 
 // Products table
-export const products = pgTable("products", {
-  id: serial("id").primaryKey(),
+export const products = sqliteTable("products", {
+  id: integer("id").primaryKey(),
   code: text("code").notNull(),
   name: text("name").notNull(),
   description: text("description"),
   unitOfMeasure: text("unit_of_measure").notNull(),
   category: text("category"),
-  costPrice: decimal("cost_price", { precision: 16, scale: 2 }).notNull(),
-  sellPrice1: decimal("sell_price_1", { precision: 16, scale: 2 }).notNull(),
-  sellPrice2: decimal("sell_price_2", { precision: 16, scale: 2 }),
-  sellPrice3: decimal("sell_price_3", { precision: 16, scale: 2 }),
-  stockQuantity: decimal("stock_quantity", { precision: 16, scale: 2 }).notNull().default("0"),
-  reorderLevel: decimal("reorder_level", { precision: 16, scale: 2 }),
-  isActive: boolean("is_active").notNull().default(true),
+  costPrice: real("cost_price").notNull(),
+  sellPrice1: real("sell_price_1").notNull(),
+  sellPrice2: real("sell_price_2"),
+  sellPrice3: real("sell_price_3"),
+  stockQuantity: real("stock_quantity").notNull().default(0),
+  reorderLevel: real("reorder_level"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
 });
 
 export const insertProductSchema = createInsertSchema(products).pick({
@@ -88,12 +126,12 @@ export const insertProductSchema = createInsertSchema(products).pick({
 });
 
 // Warehouses table
-export const warehouses = pgTable("warehouses", {
-  id: serial("id").primaryKey(),
+export const warehouses = sqliteTable("warehouses", {
+  id: integer("id").primaryKey(),
   name: text("name").notNull(),
   address: text("address"),
-  isDefault: boolean("is_default").notNull().default(false),
-  isActive: boolean("is_active").notNull().default(true),
+  isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
 });
 
 export const insertWarehouseSchema = createInsertSchema(warehouses).pick({
@@ -104,24 +142,24 @@ export const insertWarehouseSchema = createInsertSchema(warehouses).pick({
 });
 
 // Invoices table
-export const invoices = pgTable("invoices", {
-  id: serial("id").primaryKey(),
+export const invoices = sqliteTable("invoices", {
+  id: integer("id").primaryKey(),
   invoiceNumber: text("invoice_number").notNull(),
   invoiceType: text("invoice_type").notNull(), // بيع, شراء, مرتجع بيع, مرتجع شراء
   clientId: integer("client_id").notNull(),
   warehouseId: integer("warehouse_id"),
-  date: date("date").notNull(),
-  time: time("time").notNull(),
+  date: text("date").notNull(),
+  time: text("time").notNull(),
   paymentMethod: text("payment_method").notNull(),
   userId: integer("user_id").notNull(),
-  total: decimal("total", { precision: 16, scale: 2 }).notNull(),
-  discount: decimal("discount", { precision: 16, scale: 2 }).notNull().default("0"),
-  tax: decimal("tax", { precision: 16, scale: 2 }).notNull().default("0"),
-  grandTotal: decimal("grand_total", { precision: 16, scale: 2 }).notNull(),
-  paid: decimal("paid", { precision: 16, scale: 2 }).notNull().default("0"),
-  balance: decimal("balance", { precision: 16, scale: 2 }).notNull(),
+  total: real("total").notNull(),
+  discount: real("discount").notNull().default(0),
+  tax: real("tax").notNull().default(0),
+  grandTotal: real("grand_total").notNull(),
+  paid: real("paid").notNull().default(0),
+  balance: real("balance").notNull(),
   notes: text("notes"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: integer("created_at").notNull(),
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoices).pick({
@@ -143,15 +181,15 @@ export const insertInvoiceSchema = createInsertSchema(invoices).pick({
 });
 
 // Invoice Items table
-export const invoiceItems = pgTable("invoice_items", {
-  id: serial("id").primaryKey(),
+export const invoiceItems = sqliteTable("invoice_items", {
+  id: integer("id").primaryKey(),
   invoiceId: integer("invoice_id").notNull(),
   productId: integer("product_id").notNull(),
-  quantity: decimal("quantity", { precision: 16, scale: 2 }).notNull(),
-  unitPrice: decimal("unit_price", { precision: 16, scale: 2 }).notNull(),
-  discount: decimal("discount", { precision: 16, scale: 2 }).notNull().default("0"),
-  tax: decimal("tax", { precision: 16, scale: 2 }).notNull().default("0"),
-  total: decimal("total", { precision: 16, scale: 2 }).notNull(),
+  quantity: real("quantity").notNull(),
+  unitPrice: real("unit_price").notNull(),
+  discount: real("discount").notNull().default(0),
+  tax: real("tax").notNull().default(0),
+  total: real("total").notNull(),
 });
 
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).pick({
@@ -165,20 +203,20 @@ export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).pick({
 });
 
 // Transactions table
-export const transactions = pgTable("transactions", {
-  id: serial("id").primaryKey(),
+export const transactions = sqliteTable("transactions", {
+  id: integer("id").primaryKey(),
   transactionNumber: text("transaction_number").notNull(),
   transactionType: text("transaction_type").notNull(), // قبض, صرف
   clientId: integer("client_id").notNull(),
-  date: date("date").notNull(),
-  time: time("time").notNull(),
-  amount: decimal("amount", { precision: 16, scale: 2 }).notNull(),
+  date: text("date").notNull(),
+  time: text("time").notNull(),
+  amount: real("amount").notNull(),
   paymentMethod: text("payment_method").notNull(),
   reference: text("reference"),
   bank: text("bank"),
   notes: text("notes"),
   userId: integer("user_id").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: integer("created_at").notNull(),
 });
 
 export const insertTransactionSchema = createInsertSchema(transactions).pick({
@@ -196,8 +234,8 @@ export const insertTransactionSchema = createInsertSchema(transactions).pick({
 });
 
 // Settings table
-export const settings = pgTable("settings", {
-  id: serial("id").primaryKey(),
+export const settings = sqliteTable("settings", {
+  id: integer("id").primaryKey(),
   companyName: text("company_name").notNull(),
   address: text("address"),
   phone: text("phone"),
@@ -280,6 +318,32 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
   }),
   user: one(users, {
     fields: [transactions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const projectRelations = relations(projects, ({ one, many }) => ({
+  client: one(clients, {
+    fields: [projects.clientId],
+    references: [clients.id],
+  }),
+  tasks: many(tasks),
+}));
+
+export const taskRelations = relations(tasks, ({ one }) => ({
+  project: one(projects, {
+    fields: [tasks.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const timesheetRelations = relations(timesheets, ({ one }) => ({
+  task: one(tasks, {
+    fields: [timesheets.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [timesheets.userId],
     references: [users.id],
   }),
 }));

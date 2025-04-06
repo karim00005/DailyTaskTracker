@@ -33,7 +33,8 @@ const Header: React.FC = () => {
               <i className="fas fa-shopping-cart"></i>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-lg font-bold">سهل لإدارة الأعمال</h1>
+              <h1 className="text-lg font-bold">دريم لإدارة الأعمال
+</h1>
               <div className="text-xs text-gray-500">شركة: {companyInfo.name}</div>
             </div>
           </div>

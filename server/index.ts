@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeDatabase } from "./init-db";
+import { migrateDatabase } from "./migrate";
 
 const app = express();
 app.use(express.json());
@@ -38,8 +39,14 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize the database with default data if needed
-  await initializeDatabase();
+  try {
+    // Run migrations before initializing the database
+    await migrateDatabase();
+    // Initialize the database with default data
+    await initializeDatabase();
+  } catch (error) {
+    console.error("Error initializing database:", error);
+  }
   
   const server = await registerRoutes(app);
 

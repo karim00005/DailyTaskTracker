@@ -15,7 +15,7 @@ const Settings: React.FC = () => {
   const queryClient = useQueryClient();
   
   // Settings state
-  const [companyName, setCompanyName] = useState<string>("شركة سهل لإدارة الأعمال");
+  const [companyName, setCompanyName] = useState<string>("شركة دريم لإدارة الأعمال"); // closed string correctly
   const [address, setAddress] = useState<string>("14 شارع التحرير، القاهرة");
   const [phone, setPhone] = useState<string>("02-12345678");
   const [mobile, setMobile] = useState<string>("0100-123-4567");

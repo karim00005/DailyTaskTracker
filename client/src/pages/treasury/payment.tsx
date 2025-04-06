@@ -490,7 +490,8 @@ const Payment: React.FC = () => {
         </div>
         
         <div className="text-center text-sm text-gray-500">
-          <p>تم إصدار هذا السند بواسطة نظام سهل لإدارة الأعمال</p>
+          <p>تم إصدار هذا السند بواسطة نظام دريم لإدارة الأعمال
+</p>
           <p>{new Date().toLocaleDateString('ar-EG')} {new Date().toLocaleTimeString('ar-EG')}</p>
         </div>
       </div>
