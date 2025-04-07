@@ -233,9 +233,28 @@ const Inventory: React.FC = () => {
     }
   };
   // Filter products
-  const filteredProducts = Array.isArray(products)
-    ? products.filter((product) => product.category === filterCategory)
-    : [];
+  const filteredProducts = React.useMemo(() => {
+    if (!Array.isArray(products)) return [];
+
+    return products.filter((product) => {
+      // Category filter
+      const matchesCategory = filterCategory === "all" || product.category === filterCategory;
+      
+      // Search filter
+      const matchesSearch = !searchTerm || 
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.code.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Low stock filter
+      const matchesLowStock = !showLowStock || (
+        product.reorderLevel && 
+        parseFloat(product.stockQuantity) > 0 && 
+        parseFloat(product.stockQuantity) <= parseFloat(product.reorderLevel)
+      );
+
+      return matchesCategory && matchesSearch && matchesLowStock;
+    });
+  }, [products, filterCategory, searchTerm, showLowStock]);
   // Handle product details view
   const handleViewProduct = (product: any) => {
     setSelectedProduct(product);
