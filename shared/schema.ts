@@ -23,14 +23,38 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 // Clients table
 export const clients = sqliteTable("clients", {
-  id: integer("id").primaryKey().notNull(),
+  id: integer("id").primaryKey(),
   name: text("name").notNull(),
-  balance: real("balance").notNull().default(0), // Added balance column
-  accountType: text("account_type").notNull().default("مدين"), // Ensure accountType field exists
-  createdAt: integer("created_at", { mode: "timestamp" }).defaultNow(), // Ensure createdAt field exists
+  client_type: text("client_type").default("عميل"),
+  account_type: text("account_type").notNull().default("مدين"),
+  code: text("code"),
+  tax_id: text("tax_id"),
+  balance: real("balance").notNull().default(0),
+  address: text("address"),
+  city: text("city"),
+  phone: text("phone"),
+  mobile: text("mobile"),
+  email: text("email"),
+  notes: text("notes"),
+  is_active: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  created_at: integer("created_at", { mode: "timestamp" }).defaultNow(),
 });
 
-export const insertClientSchema = createInsertSchema(clients);
+export const insertClientSchema = z.object({
+  name: z.string().min(1),
+  client_type: z.string().default("عميل"),
+  account_type: z.string().default("مدين"),
+  code: z.string().optional(),
+  tax_id: z.string().optional(),
+  balance: z.number().default(0),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  phone: z.string().optional(),
+  mobile: z.string().optional(),
+  email: z.string().email().optional(),
+  notes: z.string().optional(),
+  is_active: z.boolean().default(true)
+});
 
 // Projects table
 export const projects = sqliteTable("projects", {
@@ -91,30 +115,31 @@ export const products = sqliteTable("products", {
   code: text("code").notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  unitOfMeasure: text("unit_of_measure").notNull(),
+  unit_of_measure: text("unit_of_measure").notNull(),
   category: text("category"),
-  costPrice: real("cost_price").notNull(),
-  sellPrice1: real("sell_price_1").notNull(),
-  sellPrice2: real("sell_price_2"),
-  sellPrice3: real("sell_price_3"),
-  stockQuantity: real("stock_quantity").notNull().default(0),
-  reorderLevel: real("reorder_level"),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  cost_price: real("cost_price").notNull(),
+  sell_price_1: real("sell_price_1").notNull(),
+  sell_price_2: real("sell_price_2"),
+  sell_price_3: real("sell_price_3"),
+  stock_quantity: real("stock_quantity").notNull().default(0),
+  reorder_level: real("reorder_level"),
+  is_active: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  created_at: integer("created_at", { mode: "timestamp" }).defaultNow(),
 });
 
-export const insertProductSchema = createInsertSchema(products).pick({
-  code: true,
-  name: true,
-  description: true,
-  unitOfMeasure: true,
-  category: true,
-  costPrice: true,
-  sellPrice1: true,
-  sellPrice2: true,
-  sellPrice3: true,
-  stockQuantity: true,
-  reorderLevel: true,
-  isActive: true,
+export const insertProductSchema = z.object({
+  code: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().optional(),
+  unit_of_measure: z.string().min(1),
+  category: z.string().optional(),
+  cost_price: z.number().positive(),
+  sell_price_1: z.number().positive(),
+  sell_price_2: z.number().optional(),
+  sell_price_3: z.number().optional(),
+  stock_quantity: z.number().default(0),
+  reorder_level: z.number().optional(),
+  is_active: z.boolean().default(true)
 });
 
 // Warehouses table

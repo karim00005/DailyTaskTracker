@@ -34,23 +34,25 @@ export async function processProducts(worksheet: XLSX.WorkSheet, clearExisting: 
       description: row.description || '',
       unitOfMeasure: row.unit || 'طن',
       category: row.category || 'عام',
-      costPrice: (row.basePrice || '0').toString(),
-      sellPrice1: (row.sellingPrice || '0').toString(),
-      sellPrice2: (row.wholesalePrice || '0').toString(),
-      stockQuantity: (row.stock || '0').toString(),
-      reorderLevel: (row.minStock || '0').toString(),
+      costPrice: parseFloat((row.basePrice || '0').toString()) || 0,
+      sellPrice1: parseFloat((row.sellingPrice || '0').toString()) || 0,
+      sellPrice2: parseFloat((row.wholesalePrice || '0').toString()) || 0,
+      sellPrice3: parseFloat((row.specialPrice || '0').toString()) || 0,
+      stockQuantity: parseFloat((row.stock || '0').toString()) || 0,
+      reorderLevel: parseFloat((row.minStock || '0').toString()) || 0,
       isActive: true
     }));
 
-    // Clear existing products if requested
-    if (clearExisting) {
-      await db.delete(products);
-    }
-
-    // Insert new products
-    if (productsToInsert.length > 0) {
-      await db.insert(products).values(productsToInsert);
-    }
+    // Perform the database operations in a transaction
+    await db.transaction(async (tx) => {
+      if (clearExisting) {
+        await tx.delete(products);
+      }
+      
+      for (const product of productsToInsert) {
+        await tx.insert(products).values(product);
+      }
+    });
 
     return { success: true, count: productsToInsert.length };
   } catch (error) {
@@ -75,25 +77,27 @@ export async function processClients(worksheet: XLSX.WorkSheet, clearExisting: b
       accountType: row.accountType || 'مدين',
       code: row.code?.toString() || '',
       taxId: row.taxNumber?.toString() || '',
-      balance: (row.balance || '0').toString(),
+      balance: parseFloat((row.balance || '0').toString()) || 0,
       address: row.address || '',
       city: row.city || '',
       phone: row.phone?.toString() || '',
       mobile: row.mobile?.toString() || '',
       email: row.email || '',
       notes: row.notes || '',
-      isActive: row.isActive === false ? false : true
+      isActive: row.isActive === false ? false : true,
+      createdAt: Math.floor(Date.now() / 1000) // Add timestamp
     }));
 
-    // Clear existing clients if requested
-    if (clearExisting) {
-      await db.delete(clients);
-    }
-
-    // Insert new clients
-    if (clientsToInsert.length > 0) {
-      await db.insert(clients).values(clientsToInsert);
-    }
+    // Perform the database operations in a transaction
+    await db.transaction(async (tx) => {
+      if (clearExisting) {
+        await tx.delete(clients);
+      }
+      
+      for (const client of clientsToInsert) {
+        await tx.insert(clients).values(client);
+      }
+    });
 
     return { success: true, count: clientsToInsert.length };
   } catch (error) {
@@ -121,24 +125,38 @@ export async function processTransactions(worksheet: XLSX.WorkSheet, clearExisti
         clientId: parseInt(row.clientId) || 1,
         date: date.toISOString().split('T')[0], // Convert to YYYY-MM-DD string format
         time: now.toTimeString().split(' ')[0],
-        amount: (row.amount || '0').toString(),
+        amount: parseFloat((row.amount || '0').toString()) || 0,
         paymentMethod: row.paymentMethod || 'تحويل بنكي',
         reference: row.reference?.toString() || '',
         bank: row.bank?.toString() || '',
         notes: row.notes || '',
-        userId: 1
+        userId: 1,
+        createdAt: Math.floor(Date.now() / 1000) // Add timestamp
       };
     });
 
-    // Clear existing transactions if requested
-    if (clearExisting) {
-      await db.delete(transactions);
-    }
+    // Perform the database operations in a transaction
+    await db.transaction(async (tx) => {
+      if (clearExisting) {
+        await tx.delete(transactions);
+      }
 
-    // Insert new transactions
-    if (transactionsToInsert.length > 0) {
-      await db.insert(transactions).values(transactionsToInsert);
-    }
+      // Insert transactions and update client balances
+      for (const transaction of transactionsToInsert) {
+        await tx.insert(transactions).values(transaction);
+
+        // Update client balance based on transaction type
+        const balanceChange = transaction.transactionType === 'قبض' ? 
+          -transaction.amount : transaction.amount;
+        
+        await tx.update(clients)
+          .set({ 
+            balance: sql`balance + ${balanceChange}`,
+            updatedAt: Math.floor(Date.now() / 1000)
+          })
+          .where(eq(clients.id, transaction.clientId));
+      }
+    });
 
     return { success: true, count: transactionsToInsert.length };
   } catch (error) {

@@ -173,15 +173,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json(client);
   });
 
-app.post("/api/clients", async (req: Request, res: Response) => {
-    console.log("Incoming client data:", req.body); // Log incoming data
-    const clientData = validate(insertClientSchema, req.body);
-    if (!clientData) {
-      return res.status(400).json({ message: "بيانات العميل غير صالحة" });
-    }
+  app.post("/api/clients", async (req: Request, res: Response) => {
+    try {
+      const clientData = {
+        ...req.body,
+        balance: parseFloat(req.body.balance || '0'),
+        isActive: req.body.isActive === true || req.body.isActive === 'true'
+      };
 
-    const newClient = await storage.createClient(clientData);
-    return res.status(201).json(newClient);
+      console.log("Processing client data:", clientData);
+
+      const validatedData = validate(insertClientSchema, clientData);
+      if (!validatedData) {
+        console.error("Client validation failed:", clientData);
+        return res.status(400).json({ message: "بيانات العميل غير صالحة" });
+      }
+
+      const newClient = await storage.createClient(validatedData);
+      console.log("Created client:", newClient);
+      return res.status(201).json(newClient);
+    } catch (error) {
+      console.error("Error creating client:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء إنشاء العميل" });
+    }
   });
 
   app.put("/api/clients/:id", async (req: Request, res: Response) => {
@@ -238,13 +252,32 @@ app.post("/api/clients", async (req: Request, res: Response) => {
   });
 
   app.post("/api/products", async (req: Request, res: Response) => {
-    const productData = validate(insertProductSchema, req.body);
-    if (!productData) {
-      return res.status(400).json({ message: "بيانات المنتج غير صالحة" });
-    }
+    try {
+      const productData = {
+        ...req.body,
+        cost_price: parseFloat(req.body.cost_price),
+        sell_price_1: parseFloat(req.body.sell_price_1),
+        sell_price_2: req.body.sell_price_2 ? parseFloat(req.body.sell_price_2) : undefined,
+        sell_price_3: req.body.sell_price_3 ? parseFloat(req.body.sell_price_3) : undefined,
+        stock_quantity: parseFloat(req.body.stock_quantity || '0'),
+        reorder_level: req.body.reorder_level ? parseFloat(req.body.reorder_level) : undefined,
+        is_active: req.body.is_active === true || req.body.is_active === 'true'
+      };
 
-    const newProduct = await storage.createProduct(productData);
-    return res.status(201).json(newProduct);
+      console.log("Processing product data:", productData);
+      
+      const validatedData = validate(insertProductSchema, productData);
+      if (!validatedData) {
+        console.error("Product validation failed:", productData);
+        return res.status(400).json({ message: "بيانات المنتج غير صالحة" });
+      }
+
+      const newProduct = await storage.createProduct(validatedData);
+      return res.status(201).json(newProduct);
+    } catch (error) {
+      console.error("Error creating product:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء إنشاء المنتج" });
+    }
   });
 
   app.put("/api/products/:id", async (req: Request, res: Response) => {
@@ -594,12 +627,23 @@ app.post("/api/clients", async (req: Request, res: Response) => {
 
   // Settings routes
   app.get("/api/settings", async (req: Request, res: Response) => {
-    const settings = await storage.getSettings();
-    if (!settings) {
-      return res.status(404).json({ message: "الإعدادات غير موجودة" });
+    try {
+      let settings = await storage.getSettings();
+      if (!settings) {
+        // Create default settings
+        const defaultSettings = {
+          companyName: "شركتي",
+          currency: "جنيه مصري",
+          currencySymbol: "ج.م",
+          decimalPlaces: 2
+        };
+        settings = await storage.createSettings(defaultSettings);
+      }
+      return res.json(settings);
+    } catch (error) {
+      console.error("Error getting settings:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء جلب الإعدادات" });
     }
-
-    return res.json(settings);
   });
 
   app.put("/api/settings", async (req: Request, res: Response) => {

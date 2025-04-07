@@ -634,4 +634,17 @@ export class DatabaseStorage implements IStorage {
       return result[0];
     }
   }
+  
+  async createSettings(data: Partial<InsertSettings>): Promise<Settings> {
+    try {
+      const result = await db
+        .insert(settings)
+        .values(data)
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error creating settings:", error);
+      throw error;
+    }
+  }
 }
