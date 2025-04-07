@@ -287,10 +287,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/products/:id", async (req: Request, res: Response) => {
     try {
       const productId = parseInt(req.params.id);
-      const updatedProduct = await storage.updateProduct(productId, req.body);
+      if (isNaN(productId)) {
+        return res.status(400).json({ message: "معرف المنتج غير صالح" });
+      }
+
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ message: "المنتج غير موجود" });
+      }
+
+      // Process incoming data
+      const processedData = {
+        code: req.body.code,
+        name: req.body.name,
+        description: req.body.description,
+        unitOfMeasure: req.body.unitOfMeasure,
+        category: req.body.category,
+        costPrice: req.body.costPrice ? parseFloat(req.body.costPrice) : undefined,
+        sellPrice1: req.body.sellPrice1 ? parseFloat(req.body.sellPrice1) : undefined,
+        sellPrice2: req.body.sellPrice2 ? parseFloat(req.body.sellPrice2) : undefined,
+        sellPrice3: req.body.sellPrice3 ? parseFloat(req.body.sellPrice3) : undefined,
+        stockQuantity: req.body.stockQuantity ? parseFloat(req.body.stockQuantity) : undefined,
+        reorderLevel: req.body.reorderLevel ? parseFloat(req.body.reorderLevel) : undefined,
+        isActive: req.body.isActive !== undefined ? req.body.isActive === true || req.body.isActive === "true" : undefined
+      };
+
+      // Remove undefined values
+      Object.keys(processedData).forEach(key => {
+        if (processedData[key as keyof typeof processedData] === undefined) {
+          delete processedData[key as keyof typeof processedData];
+        }
+      });
+
+      const updatedProduct = await storage.updateProduct(productId, processedData);
+      if (!updatedProduct) {
+        return res.status(500).json({ message: "حدث خطأ أثناء تحديث المنتج" });
+      }
+
       return res.json(updatedProduct);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating product:", error);
+      if (error.code === 'SQLITE_ERROR') {
+        return res.status(500).json({ message: "خطأ في قاعدة البيانات: " + error.message });
+      }
       return res.status(500).json({ message: "حدث خطأ أثناء تحديث المنتج" });
     }
   });
