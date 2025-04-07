@@ -78,25 +78,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/users", async (req: Request, res: Response) => {
-    // Validate using your schema
     const validatedUserData = validate(insertUserSchema, req.body);
     if (!validatedUserData) {
-      return res.status(400).json({ message: "بيانات المستخدم غير صالحة" });
+      return res.status(400).json({ message: "بيانات المستخدم غير صحيحة" });
     }
 
-    const existingUser = await storage.getUserByUsername(validatedUserData.username);
-    if (existingUser) {
-      return res.status(409).json({ message: "اسم المستخدم موجود بالفعل" });
-    }
+    console.log("Validated user data:", validatedUserData);
 
-    // Use a new variable name to parse the request data
-    const parsedUserData = {
-      ...req.body,
-      isActive: req.body.isActive === 'true' || req.body.isActive === true, // Parse boolean if needed
-    };
-    const newUser = await storage.createUser(parsedUserData);
-    const { password, ...userWithoutPassword } = newUser;
-    return res.status(201).json(userWithoutPassword);
+    try {
+      const existingUser = await storage.getUserByUsername(validatedUserData.username);
+      if (existingUser) {
+        return res.status(409).json({ message: "اسم المستخدم موجود بالفعل" });
+      }
+
+      const parsedUserData = {
+        ...validatedUserData,
+        isActive: validatedUserData.isActive !== undefined ? validatedUserData.isActive : true,
+      };
+
+      const newUser = await storage.createUser(parsedUserData);
+      const { password, ...userWithoutPassword } = newUser;
+      return res.status(201).json(userWithoutPassword);
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      return res.status(500).json({ message: "فشل في إنشاء المستخدم", error: error.message });
+    }
   });
 
   app.put("/api/users/:id", async (req: Request, res: Response) => {
@@ -167,7 +173,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json(client);
   });
 
-  app.post("/api/clients", async (req: Request, res: Response) => {
+app.post("/api/clients", async (req: Request, res: Response) => {
+    console.log("Incoming client data:", req.body); // Log incoming data
     const clientData = validate(insertClientSchema, req.body);
     if (!clientData) {
       return res.status(400).json({ message: "بيانات العميل غير صالحة" });

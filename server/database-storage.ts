@@ -29,12 +29,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const userData = {
-      ...user,
-      isActive: user.isActive ? 1 : 0, // Convert boolean to 0 or 1
-    };
-    const result = await db.insert(users).values(userData).returning();
-    return result[0];
+    try {
+      console.log("Creating user with data:", user);
+      const userData = {
+        ...user,
+        fullName: user.fullName || "اسم المستخدم",
+        role: user.role || "user",
+        isActive: user.isActive !== undefined ? (user.isActive ? 1 : 0) : 1, // Convert boolean to 0 or 1
+      };
+      console.log("Inserting user with data:", userData);
+      const result = await db.insert(users).values(userData).returning();
+      if (result.length > 0) {
+        return result[0];
+      } else {
+        throw new Error("Failed to create user");
+      }
+    } catch (error: any) {
+      console.error("Error inserting user:", error);
+      throw new Error(`Failed to create user: ${error.message}`);
+    }
   }
 
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
