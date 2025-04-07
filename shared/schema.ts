@@ -133,12 +133,12 @@ export const insertProductSchema = z.object({
   description: z.string().optional(),
   unit_of_measure: z.string().min(1),
   category: z.string().optional(),
-  cost_price: z.number().positive(),
-  sell_price_1: z.number().positive(),
-  sell_price_2: z.number().optional(),
-  sell_price_3: z.number().optional(),
-  stock_quantity: z.number().default(0),
-  reorder_level: z.number().optional(),
+  cost_price: z.preprocess((val) => parseFloat(val as string), z.number().positive()),
+  sell_price_1: z.preprocess((val) => parseFloat(val as string), z.number().positive()),
+  sell_price_2: z.preprocess((val) => val !== undefined ? parseFloat(val as string) : undefined, z.number().optional()),
+  sell_price_3: z.preprocess((val) => val !== undefined ? parseFloat(val as string) : undefined, z.number().optional()),
+  stock_quantity: z.preprocess((val) => parseFloat(val as string), z.number().default(0)),
+  reorder_level: z.preprocess((val) => val !== undefined ? parseFloat(val as string) : undefined, z.number().optional()),
   is_active: z.boolean().default(true)
 });
 

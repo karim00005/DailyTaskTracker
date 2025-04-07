@@ -4,4 +4,5 @@ CREATE TABLE warehouses (
   address TEXT,
   is_default BOOLEAN NOT NULL DEFAULT FALSE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE
+  ); 
 );

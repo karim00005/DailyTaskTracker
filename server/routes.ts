@@ -254,14 +254,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/products", async (req: Request, res: Response) => {
     try {
       const productData = {
-        ...req.body,
-        cost_price: parseFloat(req.body.cost_price),
-        sell_price_1: parseFloat(req.body.sell_price_1),
-        sell_price_2: req.body.sell_price_2 ? parseFloat(req.body.sell_price_2) : undefined,
-        sell_price_3: req.body.sell_price_3 ? parseFloat(req.body.sell_price_3) : undefined,
-        stock_quantity: parseFloat(req.body.stock_quantity || '0'),
-        reorder_level: req.body.reorder_level ? parseFloat(req.body.reorder_level) : undefined,
-        is_active: req.body.is_active === true || req.body.is_active === 'true'
+        code: req.body.code,
+        name: req.body.name,
+        description: req.body.description,
+        unit_of_measure: req.body.unitOfMeasure,
+        category: req.body.category,
+        cost_price: parseFloat(req.body.costPrice),
+        sell_price_1: parseFloat(req.body.sellPrice1),
+        sell_price_2: req.body.sellPrice2 ? parseFloat(req.body.sellPrice2) : undefined,
+        sell_price_3: req.body.sellPrice3 ? parseFloat(req.body.sellPrice3) : undefined,
+        stock_quantity: parseFloat(req.body.stockQuantity || '0'),
+        reorder_level: req.body.reorderLevel ? parseFloat(req.body.reorderLevel) : undefined,
+        is_active: req.body.isActive === true || req.body.isActive === 'true'
       };
 
       console.log("Processing product data:", productData);
@@ -281,36 +285,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/products/:id", async (req: Request, res: Response) => {
-    const productId = parseInt(req.params.id);
-    if (isNaN(productId)) {
-      return res.status(400).json({ message: "معرف المنتج غير صالح" });
-    }
-
-    const product = await storage.getProduct(productId);
-    if (!product) {
-      return res.status(404).json({ message: "المنتج غير موجود" });
-    }
-
-    const updatedProduct = await storage.updateProduct(productId, req.body);
-    if (!updatedProduct) {
+    try {
+      const productId = parseInt(req.params.id);
+      const updatedProduct = await storage.updateProduct(productId, req.body);
+      return res.json(updatedProduct);
+    } catch (error) {
+      console.error("Error updating product:", error);
       return res.status(500).json({ message: "حدث خطأ أثناء تحديث المنتج" });
     }
-
-    return res.json(updatedProduct);
   });
 
   app.delete("/api/products/:id", async (req: Request, res: Response) => {
-    const productId = parseInt(req.params.id);
-    if (isNaN(productId)) {
-      return res.status(400).json({ message: "معرف المنتج غير صالح" });
+    try {
+      const productId = parseInt(req.params.id);
+      const success = await storage.deleteProduct(productId);
+      if (!success) {
+        return res.status(404).json({ message: "المنتج غير موجود" });
+      }
+      return res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      return res.status(500).json({ message: "حدث خطأ أثناء حذف المنتج" });
     }
-
-    const success = await storage.deleteProduct(productId);
-    if (!success) {
-      return res.status(404).json({ message: "المنتج غير موجود" });
-    }
-
-    return res.status(204).end();
   });
 
   // Warehouse routes

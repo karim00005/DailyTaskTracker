@@ -53,8 +53,40 @@ const Inventory: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   
   // Get products data
-  const { data: products, isLoading: isProductsLoading } = useQuery({
+  interface Product {
+    id: number;
+    code: string;
+    name: string;
+    description?: string;
+    unit_of_measure: string;
+    category?: string;
+    cost_price: string;
+    sell_price_1: string;
+    sell_price_2?: string;
+    sell_price_3?: string;
+    stock_quantity: string;
+    reorder_level?: string;
+    is_active: boolean;
+  }
+
+  const { data: products = [], isLoading: isProductsLoading } = useQuery({
     queryKey: ["/api/products"],
+    select: (data: Product[]) =>
+      data.map((product) => ({
+        id: product.id,
+        code: product.code,
+        name: product.name,
+        description: product.description,
+        unitOfMeasure: product.unit_of_measure,
+        category: product.category,
+        costPrice: product.cost_price,
+        sellPrice1: product.sell_price_1,
+        sellPrice2: product.sell_price_2,
+        sellPrice3: product.sell_price_3,
+        stockQuantity: product.stock_quantity,
+        reorderLevel: product.reorder_level,
+        isActive: product.is_active,
+      })),
   });
   
   // Get warehouses data
@@ -89,14 +121,13 @@ const Inventory: React.FC = () => {
   
   // Update product mutation
   const updateProductMutation = useMutation({
-    mutationFn: async ({ id, productData }: { id: number, productData: Partial<ProductFormValues> }) => {
+    mutationFn: async ({ id, productData }: { id: number; productData: Partial<ProductFormValues> }) => {
       const response = await apiRequest("PUT", `/api/products/${id}`, productData);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       setIsProductDetailsDialogOpen(false);
-      
       toast({
         title: "تم تحديث المنتج",
         description: "تم تحديث بيانات المنتج بنجاح",
@@ -111,7 +142,6 @@ const Inventory: React.FC = () => {
       console.error("Product update error:", error);
     },
   });
-  
   // Delete product mutation
   const deleteProductMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -119,12 +149,10 @@ const Inventory: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      
       toast({
         title: "تم حذف المنتج",
         description: "تم حذف المنتج بنجاح",
       });
-      
       setIsProductDetailsDialogOpen(false);
     },
     onError: (error) => {
@@ -136,22 +164,18 @@ const Inventory: React.FC = () => {
       console.error("Product deletion error:", error);
     },
   });
-  
   // Add stock mutation
   const addStockMutation = useMutation({
     mutationFn: async ({ id, quantity }: { id: number, quantity: number }) => {
       const product = products.find((p: any) => p.id === id);
       const newQuantity = parseFloat(product.stockQuantity) + quantity;
-      
       const response = await apiRequest("PUT", `/api/products/${id}`, { 
         stockQuantity: newQuantity.toString() 
       });
-      
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      
       toast({
         title: "تم تحديث المخزون",
         description: "تم تحديث المخزون بنجاح",
@@ -166,7 +190,6 @@ const Inventory: React.FC = () => {
       console.error("Stock update error:", error);
     },
   });
-  
   // Form for new product
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
@@ -180,7 +203,6 @@ const Inventory: React.FC = () => {
       isActive: true,
     },
   });
-  
   // Form for edit product
   const editForm = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
@@ -194,47 +216,39 @@ const Inventory: React.FC = () => {
       isActive: true,
     },
   });
-  
   // Set edit form values when selected product changes
   React.useEffect(() => {
     if (selectedProduct) {
       editForm.reset(selectedProduct);
     }
   }, [selectedProduct, editForm]);
-  
   // Handle form submission for new product
   const onSubmit = (data: ProductFormValues) => {
     createProductMutation.mutate(data);
   };
-  
   // Handle form submission for edit product
   const onEditSubmit = (data: ProductFormValues) => {
     if (selectedProduct) {
       updateProductMutation.mutate({ id: selectedProduct.id, productData: data });
     }
   };
-  
   // Filter products
   const filteredProducts = Array.isArray(products)
     ? products.filter((product) => product.category === filterCategory)
     : [];
-  
   // Handle product details view
   const handleViewProduct = (product: any) => {
     setSelectedProduct(product);
     setIsProductDetailsDialogOpen(true);
   };
-  
   // Handle delete product
   const handleDeleteProduct = () => {
     if (selectedProduct && confirm(`هل أنت متأكد من حذف المنتج "${selectedProduct.name}"؟`)) {
       deleteProductMutation.mutate(selectedProduct.id);
     }
   };
-  
   // Handle add stock
   const [stockQuantity, setStockQuantity] = useState<string>("0");
-  
   const handleAddStock = () => {
     if (selectedProduct) {
       const quantity = parseFloat(stockQuantity);
@@ -246,12 +260,10 @@ const Inventory: React.FC = () => {
         });
         return;
       }
-      
       addStockMutation.mutate({ id: selectedProduct.id, quantity });
       setStockQuantity("0");
     }
   };
-  
   // Get unique categories
   const categories = React.useMemo(() => {
     const categorySet = new Set<string>();
@@ -262,13 +274,12 @@ const Inventory: React.FC = () => {
     });
     return Array.from(categorySet);
   }, [products]);
-  
   // Product columns for DataTable
   const productColumns = [
     {
       key: "#",
       header: "#",
-      cell: (_: any, index: number) => index + 1,
+      cell: (row: any & { index?: number }) => (row.index ?? 0) + 1,
     },
     {
       key: "code",
@@ -295,7 +306,7 @@ const Inventory: React.FC = () => {
     },
     {
       key: "unitOfMeasure",
-      header: "وحدة",
+      header: "وحدة القياس",
       cell: (row: any) => row.unitOfMeasure,
       sortable: true,
     },
@@ -317,10 +328,9 @@ const Inventory: React.FC = () => {
       cell: (row: any) => {
         const quantity = parseFloat(row.stockQuantity);
         const reorderLevel = row.reorderLevel ? parseFloat(row.reorderLevel) : null;
-        
         return (
           <span className={`font-medium ${
-            reorderLevel !== null && quantity <= reorderLevel 
+            reorderLevel !== null && quantity <= reorderLevel
               ? "text-red-600" 
               : quantity === 0 
                 ? "text-orange-600" 
@@ -330,11 +340,11 @@ const Inventory: React.FC = () => {
           </span>
         );
       },
-      sortable: true,
       footer: (data: any[]) => {
         const totalItems = data.reduce((sum, row) => sum + parseFloat(row.stockQuantity), 0);
         return <span className="font-bold">{totalItems}</span>;
       },
+      sortable: true,
     },
     {
       key: "actions",
@@ -353,7 +363,6 @@ const Inventory: React.FC = () => {
       ),
     },
   ];
-
   return (
     <>
       <div className="flex justify-between items-center mb-4">
@@ -363,7 +372,6 @@ const Inventory: React.FC = () => {
           منتج جديد
         </Button>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardContent className="p-4">
@@ -372,7 +380,6 @@ const Inventory: React.FC = () => {
             <div className="text-sm text-blue-600 mt-1">منتج مسجل</div>
           </CardContent>
         </Card>
-        
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardContent className="p-4">
             <div className="text-green-800 font-medium mb-1">منتجات متوفرة</div>
@@ -382,7 +389,6 @@ const Inventory: React.FC = () => {
             <div className="text-sm text-green-600 mt-1">بكمية أكبر من صفر</div>
           </CardContent>
         </Card>
-        
         <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
           <CardContent className="p-4">
             <div className="text-red-800 font-medium mb-1">منتجات نفذت</div>
@@ -392,14 +398,12 @@ const Inventory: React.FC = () => {
             <div className="text-sm text-red-600 mt-1">يجب إعادة التخزين</div>
           </CardContent>
         </Card>
-        
         <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
           <CardContent className="p-4">
             <div className="text-yellow-800 font-medium mb-1">منتجات وصلت للحد الأدنى</div>
             <div className="text-2xl font-bold text-yellow-800">
               {products?.filter((p: any) => 
-                p.reorderLevel && 
-                parseFloat(p.stockQuantity) > 0 && 
+                p.reorderLevel && parseFloat(p.stockQuantity) > 0 && 
                 parseFloat(p.stockQuantity) <= parseFloat(p.reorderLevel)
               ).length || 0}
             </div>
@@ -407,13 +411,11 @@ const Inventory: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
       <Card className="mb-4">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold">فلترة المنتجات</h2>
           </div>
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="search" className="mb-1 block">بحث</Label>
@@ -424,7 +426,6 @@ const Inventory: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
             <div>
               <Label htmlFor="category-filter" className="mb-1 block">الفئة</Label>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
@@ -441,7 +442,6 @@ const Inventory: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            
             <div className="flex items-center space-x-2 space-x-reverse mt-6">
               <Checkbox
                 id="low-stock"
@@ -453,7 +453,6 @@ const Inventory: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
       <Card>
         <Tabs defaultValue="all">
           <div className="flex justify-between items-center p-4 border-b">
@@ -463,13 +462,11 @@ const Inventory: React.FC = () => {
               <TabsTrigger value="low-stock">حد أدنى</TabsTrigger>
               <TabsTrigger value="out-of-stock">نفذ</TabsTrigger>
             </TabsList>
-            
             <Button variant="outline" onClick={() => setIsNewProductDialogOpen(true)}>
               <Icon name="add" className="ml-1" size={16} />
               منتج جديد
             </Button>
           </div>
-          
           <TabsContent value="all" className="p-0">
             <DataTable
               columns={productColumns}
@@ -493,7 +490,6 @@ const Inventory: React.FC = () => {
               }
             />
           </TabsContent>
-          
           <TabsContent value="in-stock" className="p-0">
             <DataTable
               columns={productColumns}
@@ -510,13 +506,11 @@ const Inventory: React.FC = () => {
               }
             />
           </TabsContent>
-          
           <TabsContent value="low-stock" className="p-0">
             <DataTable
               columns={productColumns}
               data={filteredProducts.filter((p: any) => 
-                p.reorderLevel && 
-                parseFloat(p.stockQuantity) > 0 && 
+                p.reorderLevel && parseFloat(p.stockQuantity) > 0 && 
                 parseFloat(p.stockQuantity) <= parseFloat(p.reorderLevel)
               )}
               showFooter={true}
@@ -531,7 +525,6 @@ const Inventory: React.FC = () => {
               }
             />
           </TabsContent>
-          
           <TabsContent value="out-of-stock" className="p-0">
             <DataTable
               columns={productColumns}
@@ -550,14 +543,12 @@ const Inventory: React.FC = () => {
           </TabsContent>
         </Tabs>
       </Card>
-
       {/* New Product Dialog */}
       <Dialog open={isNewProductDialogOpen} onOpenChange={setIsNewProductDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>إضافة منتج جديد</DialogTitle>
           </DialogHeader>
-          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -574,7 +565,6 @@ const Inventory: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="name"
@@ -588,7 +578,6 @@ const Inventory: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="unitOfMeasure"
@@ -614,7 +603,6 @@ const Inventory: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="category"
@@ -644,7 +632,6 @@ const Inventory: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="costPrice"
@@ -658,7 +645,6 @@ const Inventory: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="sellPrice1"
@@ -672,7 +658,6 @@ const Inventory: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="sellPrice2"
@@ -686,7 +671,6 @@ const Inventory: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="sellPrice3"
@@ -700,7 +684,6 @@ const Inventory: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="stockQuantity"
@@ -714,7 +697,6 @@ const Inventory: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="reorderLevel"
@@ -732,7 +714,6 @@ const Inventory: React.FC = () => {
                   )}
                 />
               </div>
-              
               <FormField
                 control={form.control}
                 name="description"
@@ -746,7 +727,6 @@ const Inventory: React.FC = () => {
                   </FormItem>
                 )}
               />
-              
               <FormField
                 control={form.control}
                 name="isActive"
@@ -767,7 +747,6 @@ const Inventory: React.FC = () => {
                   </FormItem>
                 )}
               />
-              
               <DialogFooter>
                 <Button type="submit">
                   {createProductMutation.isPending ? "جاري الحفظ..." : "حفظ المنتج"}
@@ -777,7 +756,6 @@ const Inventory: React.FC = () => {
           </Form>
         </DialogContent>
       </Dialog>
-
       {/* Product Details Dialog */}
       {selectedProduct && (
         <Dialog open={isProductDetailsDialogOpen} onOpenChange={setIsProductDetailsDialogOpen}>
@@ -785,14 +763,12 @@ const Inventory: React.FC = () => {
             <DialogHeader>
               <DialogTitle>تفاصيل المنتج: {selectedProduct.name}</DialogTitle>
             </DialogHeader>
-            
             <Tabs defaultValue="details">
               <TabsList className="w-full">
                 <TabsTrigger value="details" className="flex-1">التفاصيل</TabsTrigger>
                 <TabsTrigger value="stock" className="flex-1">المخزون</TabsTrigger>
                 <TabsTrigger value="prices" className="flex-1">الأسعار</TabsTrigger>
               </TabsList>
-              
               <TabsContent value="details">
                 <Form {...editForm}>
                   <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
@@ -810,7 +786,6 @@ const Inventory: React.FC = () => {
                           </FormItem>
                         )}
                       />
-                      
                       <FormField
                         control={editForm.control}
                         name="name"
@@ -824,7 +799,6 @@ const Inventory: React.FC = () => {
                           </FormItem>
                         )}
                       />
-                      
                       <FormField
                         control={editForm.control}
                         name="unitOfMeasure"
@@ -850,7 +824,6 @@ const Inventory: React.FC = () => {
                           </FormItem>
                         )}
                       />
-                      
                       <FormField
                         control={editForm.control}
                         name="category"
@@ -880,7 +853,6 @@ const Inventory: React.FC = () => {
                           </FormItem>
                         )}
                       />
-                      
                       <FormField
                         control={editForm.control}
                         name="description"
@@ -894,7 +866,6 @@ const Inventory: React.FC = () => {
                           </FormItem>
                         )}
                       />
-                      
                       <FormField
                         control={editForm.control}
                         name="isActive"
@@ -916,7 +887,6 @@ const Inventory: React.FC = () => {
                         )}
                       />
                     </div>
-                    
                     <div className="flex justify-between mt-6">
                       <Button 
                         type="button" 
@@ -926,7 +896,6 @@ const Inventory: React.FC = () => {
                         <Icon name="delete" className="ml-2" size={16} />
                         حذف المنتج
                       </Button>
-                      
                       <Button type="submit">
                         {updateProductMutation.isPending ? "جاري الحفظ..." : "حفظ التغييرات"}
                       </Button>
@@ -934,19 +903,16 @@ const Inventory: React.FC = () => {
                   </form>
                 </Form>
               </TabsContent>
-              
               <TabsContent value="stock">
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="current-stock">المخزون الحالي</Label>
                       <div className="text-2xl font-bold mt-1">{selectedProduct.stockQuantity} {selectedProduct.unitOfMeasure}</div>
-                      
                       {selectedProduct.reorderLevel && (
-                        <div className={`text-sm mt-1 ${
-                          parseFloat(selectedProduct.stockQuantity) <= parseFloat(selectedProduct.reorderLevel)
-                            ? "text-red-600"
-                            : "text-gray-500"
+                        <div className={`text-sm mt-1 ${parseFloat(selectedProduct.stockQuantity) <= parseFloat(selectedProduct.reorderLevel)
+                          ? "text-red-600"
+                          : "text-gray-500"
                         }`}>
                           {parseFloat(selectedProduct.stockQuantity) <= parseFloat(selectedProduct.reorderLevel)
                             ? "تنبيه: وصل المخزون للحد الأدنى"
@@ -954,7 +920,6 @@ const Inventory: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    
                     <div>
                       <Label htmlFor="reorder-level">حد إعادة الطلب</Label>
                       <Input
@@ -970,10 +935,8 @@ const Inventory: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  
                   <div className="border-t pt-4 mt-4">
                     <h3 className="text-lg font-bold mb-3">تعديل المخزون</h3>
-                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="add-stock">إضافة كمية</Label>
@@ -995,7 +958,6 @@ const Inventory: React.FC = () => {
                           </Button>
                         </div>
                       </div>
-                      
                       <div>
                         <Label htmlFor="warehouse">المخزن</Label>
                         <Select defaultValue={warehouses?.[0]?.id?.toString()}>
@@ -1012,7 +974,6 @@ const Inventory: React.FC = () => {
                         </Select>
                       </div>
                     </div>
-                    
                     <Button
                       onClick={() => updateProductMutation.mutate({ 
                         id: selectedProduct.id, 
@@ -1027,7 +988,6 @@ const Inventory: React.FC = () => {
                   </div>
                 </div>
               </TabsContent>
-              
               <TabsContent value="prices">
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1043,7 +1003,6 @@ const Inventory: React.FC = () => {
                         className="mt-1"
                       />
                     </div>
-                    
                     <div>
                       <Label htmlFor="sell-price1">سعر البيع</Label>
                       <Input
@@ -1055,17 +1014,12 @@ const Inventory: React.FC = () => {
                         onChange={(e) => editForm.setValue("sellPrice1", e.target.value)}
                         className="mt-1"
                       />
-                      
                       {parseFloat(editForm.getValues("costPrice")) > 0 && parseFloat(editForm.getValues("sellPrice1")) > 0 && (
                         <div className="text-sm text-gray-500 mt-1">
-                          هامش الربح: {(
-                            ((parseFloat(editForm.getValues("sellPrice1")) - parseFloat(editForm.getValues("costPrice"))) / 
-                            parseFloat(editForm.getValues("costPrice"))) * 100
-                          ).toFixed(1)}%
+                          هامش الربح: {(((parseFloat(editForm.getValues("sellPrice1")) - parseFloat(editForm.getValues("costPrice"))) / parseFloat(editForm.getValues("costPrice"))) * 100).toFixed(1)}%
                         </div>
                       )}
                     </div>
-                    
                     <div>
                       <Label htmlFor="sell-price2">سعر البيع 2 (اختياري)</Label>
                       <Input
@@ -1078,7 +1032,6 @@ const Inventory: React.FC = () => {
                         className="mt-1"
                       />
                     </div>
-                    
                     <div>
                       <Label htmlFor="sell-price3">سعر البيع 3 (اختياري)</Label>
                       <Input
@@ -1092,7 +1045,6 @@ const Inventory: React.FC = () => {
                       />
                     </div>
                   </div>
-                  
                   <Button
                     onClick={() => updateProductMutation.mutate({ 
                       id: selectedProduct.id, 
@@ -1116,5 +1068,4 @@ const Inventory: React.FC = () => {
     </>
   );
 };
-
 export default Inventory;
